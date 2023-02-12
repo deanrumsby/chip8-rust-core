@@ -1,5 +1,7 @@
 mod cpu;
+mod font;
 mod memory;
+mod registers;
 mod utils;
 
 use cpu::Cpu;
@@ -15,7 +17,7 @@ impl Chip8 {
 
     pub fn load(&mut self, program: &[u8]) {}
 
-    pub fn step(&self) {
+    pub fn step(&mut self) {
         self.cpu.step();
     }
 

@@ -1,8 +1,12 @@
+use crate::font::FONT;
 use crate::memory::Memory;
+use crate::registers::{RegisterName, Registers};
 use crate::utils::convert_to_opcode;
 use rand::random;
 
 const OPCODE_SIZE: u16 = 2;
+const PROGRAM_START_OFFSET: u16 = 0x200;
+const FONT_START_OFFSET: usize = 0;
 
 pub struct Cpu {
     i: u16,
@@ -11,26 +15,33 @@ pub struct Cpu {
     dt: u8,
     st: u8,
     v: [u8; 16],
+    registers: Registers,
     stack: [u16; 16],
     memory: Memory,
 }
 
 impl Cpu {
     pub fn new() -> Self {
+        let mut memory = Memory::new();
+        let registers = Registers::new();
+        memory.write(FONT_START_OFFSET, FONT.as_slice());
+
         Self {
             i: 0,
-            pc: 0,
+            pc: PROGRAM_START_OFFSET,
             sp: 0,
             dt: 0,
             st: 0,
             v: [0; 16],
-            memory: Memory::new(),
+            memory,
+            registers,
             stack: [0; 16],
         }
     }
 
-    pub fn step(&self) {
+    pub fn step(&mut self) {
         let opcode = self.fetch();
+        self.execute(opcode);
     }
 
     fn fetch(&self) -> u16 {
@@ -43,7 +54,7 @@ impl Cpu {
         let t = ((opcode & 0xf000) >> 12) as u8;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
-        let nnn = (opcode & 0x0fff) as u16;
+        let nnn = (opcode & 0x0fff) as usize;
         let nn = (opcode & 0x00ff) as u8;
         let n = (opcode & 0x000f) as u8;
 
@@ -53,20 +64,23 @@ impl Cpu {
                 0x0e0 => {}
 
                 // RET
-                0x0ee => {}
+                0x0ee => {
+                    self.pc = self.stack[self.sp as usize];
+                    self.sp -= 1;
+                }
 
                 // ERR
                 _ => panic!("Invalid opcode: {opcode:X}"),
             },
 
-            // JP addr
-            0x1 => self.i = nnn,
+            // JP nnn
+            0x1 => self.registers.set(RegisterName::I, nnn),
 
-            // CALL addr
+            // CALL nnn
             0x2 => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
-                self.pc = nnn;
+                self.registers.set(RegisterName::PC, nnn);
             }
 
             // SE Vx, nn
@@ -155,7 +169,7 @@ impl Cpu {
             },
 
             // LD I, nnn
-            0xa => self.i = nnn,
+            0xa => self.registers.set(RegisterName::I, nnn),
 
             // JP V0, nnn
             0xb => self.pc = nnn + self.v[0] as u16,
@@ -221,4 +235,16 @@ impl Cpu {
             _ => panic!("Invalid opcode: {opcode:X}"),
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cpu;
+
+    struct OpcodeTest {
+        expected: Cpu,
+        state: Cpu,
+    }
+
+    impl OpcodeTest {}
 }
