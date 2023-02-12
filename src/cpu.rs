@@ -4,7 +4,7 @@ use crate::registers::{RegisterName, Registers};
 use crate::utils::convert_to_opcode;
 use rand::random;
 
-const OPCODE_SIZE: u16 = 2;
+const OPCODE_SIZE: usize = 2;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
@@ -45,7 +45,7 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        let two_bytes = self.memory.read(self.pc.into(), OPCODE_SIZE as usize);
+        let two_bytes = self.memory.read(self.pc.into(), OPCODE_SIZE);
         let opcode = convert_to_opcode(two_bytes);
         opcode
     }
@@ -55,7 +55,7 @@ impl Cpu {
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
         let nnn = (opcode & 0x0fff) as usize;
-        let nn = (opcode & 0x00ff) as u8;
+        let nn = (opcode & 0x00ff) as usize;
         let n = (opcode & 0x000f) as u8;
 
         match t {
@@ -85,50 +85,71 @@ impl Cpu {
 
             // SE Vx, nn
             0x3 => {
-                if self.v[x] == nn {
-                    self.pc += OPCODE_SIZE;
+                let vx = self.registers.read(RegisterName::V(x));
+                if vx == nn {
+                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
                 }
             }
 
             // SNE Vx, nn
             0x4 => {
-                if self.v[x] != nn {
-                    self.pc += OPCODE_SIZE
+                let vx = self.registers.read(RegisterName::V(x));
+                if vx != nn {
+                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
                 }
             }
 
             // SE Vx, Vy
             0x5 => {
-                if self.v[x] == self.v[y] {
-                    self.pc += OPCODE_SIZE
+                let vx = self.registers.read(RegisterName::V(x));
+                let vy = self.registers.read(RegisterName::V(y));
+                if vx == vy {
+                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
                 }
             }
 
             // LD Vx, nn
-            0x6 => self.v[x] = nn,
+            0x6 => self.registers.set(RegisterName::V(x), nn),
 
             // ADD Vx, nn
-            0x7 => self.v[x] += nn,
+            0x7 => {
+                self.registers.increment(RegisterName::V(x), nn);
+            }
 
             0x8 => match n {
                 // LD Vx, Vy
-                0x0 => self.v[x] = self.v[y],
+                0x0 => {
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(x), vy);
+                }
 
                 // OR Vx, Vy
-                0x1 => self.v[x] |= self.v[y],
+                0x1 => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(x), vx | vy);
+                }
 
                 // AND Vx, Vy
-                0x2 => self.v[x] &= self.v[y],
+                0x2 => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(x), vx & vy);
+                }
 
                 // XOR Vx, Vy
-                0x3 => self.v[x] ^= self.v[y],
+                0x3 => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(x), vx ^ vy);
+                }
 
                 // ADD Vx, Vy
                 0x4 => {
-                    let (result, has_overflown) = self.v[x].overflowing_add(self.v[y]);
-                    self.v[x] = result;
+                    let vy = self.registers.read(RegisterName::V(y));
+                    let has_overflown = self.registers.increment(RegisterName::V(x), vy);
                     if has_overflown {
-                        self.v[0xf] = 1;
+                        self.registers.set(RegisterName::V(0xf), 1);
                     }
                 }
 
@@ -143,9 +164,9 @@ impl Cpu {
 
                 // SHR Vx, Vy
                 0x6 => {
-                    self.v[x] = self.v[y];
-                    self.v[0xf] = self.v[x] & 0x1;
-                    self.v[x] >>= 1
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(0xf), vy & 0x1);
+                    self.registers.set(RegisterName::V(x), vy >> 1);
                 }
 
                 // SUBN Vx, Vy
@@ -159,9 +180,9 @@ impl Cpu {
 
                 // SHL Vx, Vy
                 0xe => {
-                    self.v[x] = self.v[y];
-                    self.v[0xf] = self.v[x] & 0x80;
-                    self.v[x] <<= 1;
+                    let vy = self.registers.read(RegisterName::V(y));
+                    self.registers.set(RegisterName::V(0xf), vy & 0x80);
+                    self.registers.set(RegisterName::V(x), vy << 1);
                 }
 
                 // ERR
@@ -172,10 +193,15 @@ impl Cpu {
             0xa => self.registers.set(RegisterName::I, nnn),
 
             // JP V0, nnn
-            0xb => self.pc = nnn + self.v[0] as u16,
-
+            0xb => {
+                let v0 = self.registers.read(RegisterName::V(0x0));
+                self.registers.set(RegisterName::PC, nnn + v0);
+            }
             // RND Vx, nn
-            0xc => self.v[x] = random::<u8>() & nn,
+            0xc => {
+                let rand = random::<usize>() & nn;
+                self.registers.set(RegisterName::V(x), rand);
+            }
 
             // DRW Vx, Vy, n
             0xd => {}
@@ -193,19 +219,31 @@ impl Cpu {
 
             0xf => match nn {
                 // LD Vx, DT
-                0x07 => self.v[x] = self.dt,
+                0x07 => {
+                    let dt = self.registers.read(RegisterName::DT);
+                    self.registers.set(RegisterName::V(x), dt);
+                }
 
                 // LD Vx, K
                 0x0a => {}
 
                 // LD DT, Vx
-                0x15 => self.dt = self.v[x],
+                0x15 => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    self.registers.set(RegisterName::DT, vx);
+                }
 
                 // LD ST, Vx
-                0x18 => self.st = self.v[x],
+                0x18 => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    self.registers.set(RegisterName::ST, vx);
+                }
 
                 // ADD I, Vx
-                0x1e => self.i += self.v[x] as u16,
+                0x1e => {
+                    let vx = self.registers.read(RegisterName::V(x));
+                    self.registers.increment(RegisterName::I, vx);
+                }
 
                 // LD F, Vx
                 0x29 => {}
@@ -215,8 +253,14 @@ impl Cpu {
 
                 // LD [I], Vx
                 0x55 => {
-                    let buffer = &self.v[0..=x];
-                    self.memory.write(self.i as usize, buffer);
+                    let vx = self.registers.read(RegisterName::V(x));
+                    let mut buffer: Vec<u8> = Vec::new();
+                    for i in 0..=vx {
+                        let vi = self.registers.read(RegisterName::V(i));
+                        buffer.push(vi as u8);
+                    }
+                    let i = self.registers.read(RegisterName::I);
+                    self.memory.write(i, buffer.as_slice());
                 }
 
                 // LD Vx, [I]

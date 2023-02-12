@@ -50,37 +50,37 @@ impl Registers {
         }
     }
 
-    pub fn increment(&mut self, name: RegisterName, value: usize) -> (usize, bool) {
+    pub fn increment(&mut self, name: RegisterName, value: usize) -> bool {
         match name {
             RegisterName::I => {
                 let (result, has_overflown) = self.i.overflowing_add(value as u16);
                 self.i = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
             RegisterName::PC => {
                 let (result, has_overflown) = self.pc.overflowing_add(value as u16);
                 self.pc = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
             RegisterName::SP => {
                 let (result, has_overflown) = self.sp.overflowing_add(value as u8);
                 self.sp = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
             RegisterName::DT => {
                 let (result, has_overflown) = self.dt.overflowing_add(value as u8);
                 self.dt = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
             RegisterName::ST => {
                 let (result, has_overflown) = self.st.overflowing_add(value as u8);
                 self.st = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
             RegisterName::V(index) => {
                 let (result, has_overflown) = self.v[index].overflowing_add(value as u8);
                 self.v[index] = result;
-                (result as usize, has_overflown)
+                has_overflown
             }
         }
     }
