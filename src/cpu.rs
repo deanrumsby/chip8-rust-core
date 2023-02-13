@@ -9,12 +9,6 @@ const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
 pub struct Cpu {
-    i: u16,
-    pc: u16,
-    sp: u8,
-    dt: u8,
-    st: u8,
-    v: [u8; 16],
     registers: Registers,
     stack: [u16; 16],
     memory: Memory,
@@ -27,12 +21,6 @@ impl Cpu {
         memory.write(FONT_START_OFFSET, FONT.as_slice());
 
         Self {
-            i: 0,
-            pc: PROGRAM_START_OFFSET,
-            sp: 0,
-            dt: 0,
-            st: 0,
-            v: [0; 16],
             memory,
             registers,
             stack: [0; 16],
@@ -45,7 +33,8 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        let two_bytes = self.memory.read(self.pc.into(), OPCODE_SIZE);
+        let pc = self.registers.read(RegisterName::PC);
+        let two_bytes = self.memory.read(pc, OPCODE_SIZE);
         let opcode = convert_to_opcode(two_bytes);
         opcode
     }
@@ -65,7 +54,9 @@ impl Cpu {
 
                 // RET
                 0x0ee => {
-                    self.pc = self.stack[self.sp as usize];
+                    let sp = self.registers.read(RegisterName::SP);
+                    let address = self.stack[sp] as usize;
+                    self.registers.set(RegisterName::PC, address);
                     self.sp -= 1;
                 }
 
@@ -78,7 +69,7 @@ impl Cpu {
 
             // CALL nnn
             0x2 => {
-                self.sp += 1;
+                self.registers.increment(RegisterName::SP, 1);
                 self.stack[self.sp as usize] = self.pc;
                 self.registers.set(RegisterName::PC, nnn);
             }
