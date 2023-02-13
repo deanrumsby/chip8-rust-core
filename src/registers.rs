@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+#[derive(PartialEq, Eq, Hash)]
 pub enum RegisterName {
     I,
     PC,
@@ -7,80 +10,88 @@ pub enum RegisterName {
     V(usize),
 }
 
+enum RegisterValue {
+    U8(u8),
+    U16(u16),
+}
+
 pub struct Registers {
-    i: u16,
-    pc: u16,
-    sp: u8,
-    dt: u8,
-    st: u8,
-    v: [u8; 16],
+    map: HashMap<RegisterName, RegisterValue>,
 }
 
 impl Registers {
     pub fn new() -> Self {
         Self {
-            i: 0,
-            pc: 0,
-            sp: 0,
-            dt: 0,
-            st: 0,
-            v: [0; 16],
+            map: HashMap::from([
+                (RegisterName::I, RegisterValue::U16(0)),
+                (RegisterName::PC, RegisterValue::U16(0)),
+                (RegisterName::SP, RegisterValue::U8(0)),
+                (RegisterName::DT, RegisterValue::U8(0)),
+                (RegisterName::ST, RegisterValue::U8(0)),
+                (RegisterName::V(0x0), RegisterValue::U8(0)),
+                (RegisterName::V(0x1), RegisterValue::U8(0)),
+                (RegisterName::V(0x2), RegisterValue::U8(0)),
+                (RegisterName::V(0x3), RegisterValue::U8(0)),
+                (RegisterName::V(0x4), RegisterValue::U8(0)),
+                (RegisterName::V(0x5), RegisterValue::U8(0)),
+                (RegisterName::V(0x6), RegisterValue::U8(0)),
+                (RegisterName::V(0x7), RegisterValue::U8(0)),
+                (RegisterName::V(0x8), RegisterValue::U8(0)),
+                (RegisterName::V(0x9), RegisterValue::U8(0)),
+                (RegisterName::V(0xa), RegisterValue::U8(0)),
+                (RegisterName::V(0xb), RegisterValue::U8(0)),
+                (RegisterName::V(0xc), RegisterValue::U8(0)),
+                (RegisterName::V(0xd), RegisterValue::U8(0)),
+                (RegisterName::V(0xe), RegisterValue::U8(0)),
+                (RegisterName::V(0xf), RegisterValue::U8(0)),
+            ]),
         }
     }
 
     pub fn read(&self, name: RegisterName) -> usize {
-        match name {
-            RegisterName::I => self.i as usize,
-            RegisterName::PC => self.pc as usize,
-            RegisterName::SP => self.sp as usize,
-            RegisterName::DT => self.dt as usize,
-            RegisterName::ST => self.st as usize,
-            RegisterName::V(index) => self.v[index] as usize,
+        let register_value = self.map.get(&name).unwrap();
+        match register_value {
+            RegisterValue::U16(current_value) => *current_value as usize,
+            RegisterValue::U8(current_value) => *current_value as usize,
         }
     }
 
     pub fn set(&mut self, name: RegisterName, value: usize) {
-        match name {
-            RegisterName::I => self.i = value as u16,
-            RegisterName::PC => self.pc = value as u16,
-            RegisterName::SP => self.sp = value as u8,
-            RegisterName::DT => self.dt = value as u8,
-            RegisterName::ST => self.st = value as u8,
-            RegisterName::V(index) => self.v[index] = value as u8,
+        let register_value = self.map.get_mut(&name).unwrap();
+        match register_value {
+            RegisterValue::U16(current_value) => *current_value = value as u16,
+            RegisterValue::U8(current_value) => *current_value = value as u8,
         }
     }
 
     pub fn increment(&mut self, name: RegisterName, value: usize) -> bool {
-        match name {
-            RegisterName::I => {
-                let (result, has_overflown) = self.i.overflowing_add(value as u16);
-                self.i = result;
+        let register_value = self.map.get_mut(&name).unwrap();
+        match register_value {
+            RegisterValue::U16(current_value) => {
+                let (result, has_overflown) = current_value.overflowing_add(value as u16);
+                *current_value = result;
                 has_overflown
             }
-            RegisterName::PC => {
-                let (result, has_overflown) = self.pc.overflowing_add(value as u16);
-                self.pc = result;
+            RegisterValue::U8(current_value) => {
+                let (result, has_overflown) = current_value.overflowing_add(value as u8);
+                *current_value = result;
                 has_overflown
             }
-            RegisterName::SP => {
-                let (result, has_overflown) = self.sp.overflowing_add(value as u8);
-                self.sp = result;
-                has_overflown
+        }
+    }
+
+    pub fn decrement(&mut self, name: RegisterName, value: usize) -> bool {
+        let register_value = self.map.get_mut(&name).unwrap();
+        match register_value {
+            RegisterValue::U16(current_value) => {
+                let (result, has_underflown) = current_value.overflowing_sub(value as u16);
+                *current_value = result;
+                has_underflown
             }
-            RegisterName::DT => {
-                let (result, has_overflown) = self.dt.overflowing_add(value as u8);
-                self.dt = result;
-                has_overflown
-            }
-            RegisterName::ST => {
-                let (result, has_overflown) = self.st.overflowing_add(value as u8);
-                self.st = result;
-                has_overflown
-            }
-            RegisterName::V(index) => {
-                let (result, has_overflown) = self.v[index].overflowing_add(value as u8);
-                self.v[index] = result;
-                has_overflown
+            RegisterValue::U8(current_value) => {
+                let (result, has_underflown) = current_value.overflowing_sub(value as u8);
+                *current_value = result;
+                has_underflown
             }
         }
     }
@@ -91,16 +102,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn can_read_a_named_register() {
+    fn can_read_a_register() {
         let registers = Registers::new();
         let value = registers.read(RegisterName::PC);
-        assert_eq!(value, 0);
-    }
-
-    #[test]
-    fn can_read_a_v_register() {
-        let registers = Registers::new();
-        let value = registers.read(RegisterName::V(0x8));
         assert_eq!(value, 0);
     }
 

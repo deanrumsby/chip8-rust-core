@@ -57,7 +57,7 @@ impl Cpu {
                     let sp = self.registers.read(RegisterName::SP);
                     let address = self.stack[sp] as usize;
                     self.registers.set(RegisterName::PC, address);
-                    self.sp -= 1;
+                    self.registers.decrement(RegisterName::SP, 1);
                 }
 
                 // ERR
@@ -70,7 +70,9 @@ impl Cpu {
             // CALL nnn
             0x2 => {
                 self.registers.increment(RegisterName::SP, 1);
-                self.stack[self.sp as usize] = self.pc;
+                let pc = self.registers.read(RegisterName::PC);
+                let sp = self.registers.read(RegisterName::SP);
+                self.stack[sp] = pc as u16;
                 self.registers.set(RegisterName::PC, nnn);
             }
 
@@ -146,10 +148,10 @@ impl Cpu {
 
                 // SUB Vx, Vy
                 0x5 => {
-                    let (result, has_underflown) = self.v[x].overflowing_sub(self.v[y]);
-                    self.v[x] = result;
+                    let vy = self.registers.read(RegisterName::V(y));
+                    let has_underflown = self.registers.decrement(RegisterName::V(x), vy);
                     if !has_underflown {
-                        self.v[0xf] = 1;
+                        self.registers.set(RegisterName::V(0xf), 1);
                     }
                 }
 
@@ -162,10 +164,10 @@ impl Cpu {
 
                 // SUBN Vx, Vy
                 0x7 => {
-                    let (result, has_underflown) = self.v[y].overflowing_sub(self.v[x]);
-                    self.v[x] = result;
+                    let vx = self.registers.read(RegisterName::V(x));
+                    let has_underflown = self.registers.decrement(RegisterName::V(y), vx);
                     if !has_underflown {
-                        self.v[0xf] = 1;
+                        self.registers.set(RegisterName::V(0xf), 1);
                     }
                 }
 
@@ -256,10 +258,10 @@ impl Cpu {
 
                 // LD Vx, [I]
                 0x65 => {
-                    let buffer = self.memory.read(self.i as usize, x + 1);
-                    for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
-                        *byte = buffer[index];
-                    }
+                    // let buffer = self.memory.read(self.i as usize, x + 1);
+                    // for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
+                    //     *byte = buffer[index];
+                    // }
                 }
 
                 // ERR
