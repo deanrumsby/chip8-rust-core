@@ -1,7 +1,10 @@
+mod instructions;
+
 use crate::font::FONT;
 use crate::memory::Memory;
 use crate::registers::{RegisterName, Registers};
 use crate::utils::convert_to_opcode;
+use instructions::Instruction;
 use rand::random;
 
 const OPCODE_SIZE: usize = 2;
@@ -29,7 +32,8 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
-        self.execute(opcode);
+        let instruction = Self::decode(opcode);
+        self.execute(instruction);
     }
 
     fn fetch(&self) -> u16 {
@@ -39,36 +43,79 @@ impl Cpu {
         opcode
     }
 
-    fn execute(&mut self, opcode: u16) {
-        let t = ((opcode & 0xf000) >> 12) as u8;
+    fn decode(opcode: u16) -> Instruction {
+        let op_type = ((opcode & 0xf000) >> 12) as usize;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
         let nnn = (opcode & 0x0fff) as usize;
         let nn = (opcode & 0x00ff) as usize;
-        let n = (opcode & 0x000f) as u8;
+        let n = (opcode & 0x000f) as usize;
 
-        match t {
+        match op_type {
             0x0 => match nnn {
-                // CLS
-                0x0e0 => {}
-
-                // RET
-                0x0ee => {
-                    let sp = self.registers.read(RegisterName::SP);
-                    let address = self.stack[sp] as usize;
-                    self.registers.set(RegisterName::PC, address);
-                    self.registers.decrement(RegisterName::SP, 1);
-                }
-
-                // ERR
+                0x0e0 => Instruction::C00E0,
+                0x0ee => Instruction::C00EE,
                 _ => panic!("Invalid opcode: {opcode:X}"),
             },
+            0x1 => Instruction::C1NNN(nnn),
+            0x2 => Instruction::C2NNN(nnn),
+            0x3 => Instruction::C3XNN(x, nn),
+            0x4 => Instruction::C4XNN(x, nn),
+            0x5 => Instruction::C5XY0(x, y),
+            0x6 => Instruction::C6XNN(x, nn),
+            0x7 => Instruction::C7XNN(x, nn),
+            0x8 => match n {
+                0x0 => Instruction::C8XY0(x, y),
+                0x1 => Instruction::C8XY1(x, y),
+                0x2 => Instruction::C8XY2(x, y),
+                0x3 => Instruction::C8XY3(x, y),
+                0x4 => Instruction::C8XY4(x, y),
+                0x5 => Instruction::C8XY5(x, y),
+                0x6 => Instruction::C8XY6(x, y),
+                0x7 => Instruction::C8XY7(x, y),
+                0xe => Instruction::C8XYE(x, y),
+                _ => panic!("Invalid opcode: {opcode:X}"),
+            },
+            0x9 => Instruction::C9XY0(x, y),
+            0xa => Instruction::CANNN(nnn),
+            0xb => Instruction::CBNNN(nnn),
+            0xc => Instruction::CCXNN(x, nn),
+            0xd => Instruction::CDXYN(x, y, n),
+            0xe => match nn {
+                0x9e => Instruction::CEX9E(x),
+                0xa1 => Instruction::CEXA1(x),
+                _ => panic!("Invalid opcode: {opcode:X}"),
+            },
+            0xf => match nn {
+                0x07 => Instruction::CFX07(x),
+                0x0a => Instruction::CFX0A(x),
+                0x15 => Instruction::CFX15(x),
+                0x18 => Instruction::CFX18(x),
+                0x1e => Instruction::CFX1E(x),
+                0x29 => Instruction::CFX29(x),
+                0x33 => Instruction::CFX33(x),
+                0x55 => Instruction::CFX55(x),
+                0x65 => Instruction::CFX65(x),
+                _ => panic!("Invalid opcode: {opcode:X}"),
+            },
+            _ => panic!("Invalid opcode: {opcode:X}"),
+        }
+    }
 
-            // JP nnn
-            0x1 => self.registers.set(RegisterName::I, nnn),
+    fn execute(&mut self, instruction: Instruction) {
+        match instruction {
+            Instruction::C00E0 => {}
 
-            // CALL nnn
-            0x2 => {
+            Instruction::C00EE => {
+                let sp = self.registers.read(RegisterName::SP);
+                let address = self.stack[sp] as usize;
+                self.registers.set(RegisterName::PC, address);
+                self.registers.decrement(RegisterName::SP, 1);
+            }
+
+            Instruction::C1NNN(nnn) => self.registers.set(RegisterName::I, nnn),
+
+            Instruction::C2NNN(nnn) => {
                 self.registers.increment(RegisterName::SP, 1);
                 let pc = self.registers.read(RegisterName::PC);
                 let sp = self.registers.read(RegisterName::SP);
@@ -76,24 +123,21 @@ impl Cpu {
                 self.registers.set(RegisterName::PC, nnn);
             }
 
-            // SE Vx, nn
-            0x3 => {
+            Instruction::C3XNN(x, nn) => {
                 let vx = self.registers.read(RegisterName::V(x));
                 if vx == nn {
                     self.registers.increment(RegisterName::PC, OPCODE_SIZE);
                 }
             }
 
-            // SNE Vx, nn
-            0x4 => {
+            Instruction::C4XNN(x, nn) => {
                 let vx = self.registers.read(RegisterName::V(x));
                 if vx != nn {
                     self.registers.increment(RegisterName::PC, OPCODE_SIZE);
                 }
             }
 
-            // SE Vx, Vy
-            0x5 => {
+            Instruction::C5XY0(x, y) => {
                 let vx = self.registers.read(RegisterName::V(x));
                 let vy = self.registers.read(RegisterName::V(y));
                 if vx == vy {
@@ -101,175 +145,134 @@ impl Cpu {
                 }
             }
 
-            // LD Vx, nn
-            0x6 => self.registers.set(RegisterName::V(x), nn),
+            Instruction::C6XNN(x, nn) => self.registers.set(RegisterName::V(x), nn),
 
-            // ADD Vx, nn
-            0x7 => {
+            Instruction::C7XNN(x, nn) => {
                 self.registers.increment(RegisterName::V(x), nn);
             }
 
-            0x8 => match n {
-                // LD Vx, Vy
-                0x0 => {
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(x), vy);
+            Instruction::C8XY0(x, y) => {
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(x), vy);
+            }
+
+            Instruction::C8XY1(x, y) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(x), vx | vy);
+            }
+
+            Instruction::C8XY2(x, y) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(x), vx & vy);
+            }
+
+            Instruction::C8XY3(x, y) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(x), vx ^ vy);
+            }
+
+            Instruction::C8XY4(x, y) => {
+                let vy = self.registers.read(RegisterName::V(y));
+                let has_overflown = self.registers.increment(RegisterName::V(x), vy);
+                if has_overflown {
+                    self.registers.set(RegisterName::V(0xf), 1);
                 }
+            }
 
-                // OR Vx, Vy
-                0x1 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(x), vx | vy);
+            Instruction::C8XY5(x, y) => {
+                let vy = self.registers.read(RegisterName::V(y));
+                let has_underflown = self.registers.decrement(RegisterName::V(x), vy);
+                if !has_underflown {
+                    self.registers.set(RegisterName::V(0xf), 1);
                 }
+            }
 
-                // AND Vx, Vy
-                0x2 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(x), vx & vy);
+            Instruction::C8XY6(x, y) => {
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(0xf), vy & 0x1);
+                self.registers.set(RegisterName::V(x), vy >> 1);
+            }
+
+            Instruction::C8XY7(x, y) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                let has_underflown = self.registers.decrement(RegisterName::V(y), vx);
+                if !has_underflown {
+                    self.registers.set(RegisterName::V(0xf), 1);
                 }
+            }
 
-                // XOR Vx, Vy
-                0x3 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(x), vx ^ vy);
-                }
+            Instruction::C8XYE(x, y) => {
+                let vy = self.registers.read(RegisterName::V(y));
+                self.registers.set(RegisterName::V(0xf), vy & 0x80);
+                self.registers.set(RegisterName::V(x), vy << 1);
+            }
 
-                // ADD Vx, Vy
-                0x4 => {
-                    let vy = self.registers.read(RegisterName::V(y));
-                    let has_overflown = self.registers.increment(RegisterName::V(x), vy);
-                    if has_overflown {
-                        self.registers.set(RegisterName::V(0xf), 1);
-                    }
-                }
+            Instruction::C9XY0(x, y) => {}
 
-                // SUB Vx, Vy
-                0x5 => {
-                    let vy = self.registers.read(RegisterName::V(y));
-                    let has_underflown = self.registers.decrement(RegisterName::V(x), vy);
-                    if !has_underflown {
-                        self.registers.set(RegisterName::V(0xf), 1);
-                    }
-                }
+            Instruction::CANNN(nnn) => self.registers.set(RegisterName::I, nnn),
 
-                // SHR Vx, Vy
-                0x6 => {
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(0xf), vy & 0x1);
-                    self.registers.set(RegisterName::V(x), vy >> 1);
-                }
-
-                // SUBN Vx, Vy
-                0x7 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    let has_underflown = self.registers.decrement(RegisterName::V(y), vx);
-                    if !has_underflown {
-                        self.registers.set(RegisterName::V(0xf), 1);
-                    }
-                }
-
-                // SHL Vx, Vy
-                0xe => {
-                    let vy = self.registers.read(RegisterName::V(y));
-                    self.registers.set(RegisterName::V(0xf), vy & 0x80);
-                    self.registers.set(RegisterName::V(x), vy << 1);
-                }
-
-                // ERR
-                _ => panic!("Invalid opcode: {opcode:X}"),
-            },
-
-            // LD I, nnn
-            0xa => self.registers.set(RegisterName::I, nnn),
-
-            // JP V0, nnn
-            0xb => {
+            Instruction::CBNNN(nnn) => {
                 let v0 = self.registers.read(RegisterName::V(0x0));
                 self.registers.set(RegisterName::PC, nnn + v0);
             }
-            // RND Vx, nn
-            0xc => {
+
+            Instruction::CCXNN(x, nn) => {
                 let rand = random::<usize>() & nn;
                 self.registers.set(RegisterName::V(x), rand);
             }
 
-            // DRW Vx, Vy, n
-            0xd => {}
+            Instruction::CDXYN(x, y, n) => {}
 
-            0xe => match nn {
-                // SKP Vx
-                0x9e => {}
+            Instruction::CEX9E(x) => {}
 
-                // SKNP Vx
-                0xa1 => {}
+            Instruction::CEXA1(x) => {}
 
-                // ERR
-                _ => panic!("Invalid opcode: {opcode:X}"),
-            },
+            Instruction::CFX07(x) => {
+                let dt = self.registers.read(RegisterName::DT);
+                self.registers.set(RegisterName::V(x), dt);
+            }
 
-            0xf => match nn {
-                // LD Vx, DT
-                0x07 => {
-                    let dt = self.registers.read(RegisterName::DT);
-                    self.registers.set(RegisterName::V(x), dt);
+            Instruction::CFX0A(x) => {}
+
+            Instruction::CFX15(x) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                self.registers.set(RegisterName::DT, vx);
+            }
+
+            Instruction::CFX18(x) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                self.registers.set(RegisterName::ST, vx);
+            }
+
+            Instruction::CFX1E(x) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                self.registers.increment(RegisterName::I, vx);
+            }
+
+            Instruction::CFX29(x) => {}
+
+            Instruction::CFX33(x) => {}
+
+            Instruction::CFX55(x) => {
+                let vx = self.registers.read(RegisterName::V(x));
+                let mut buffer: Vec<u8> = Vec::new();
+                for i in 0..=vx {
+                    let vi = self.registers.read(RegisterName::V(i));
+                    buffer.push(vi as u8);
                 }
+                let i = self.registers.read(RegisterName::I);
+                self.memory.write(i, buffer.as_slice());
+            }
 
-                // LD Vx, K
-                0x0a => {}
-
-                // LD DT, Vx
-                0x15 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    self.registers.set(RegisterName::DT, vx);
-                }
-
-                // LD ST, Vx
-                0x18 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    self.registers.set(RegisterName::ST, vx);
-                }
-
-                // ADD I, Vx
-                0x1e => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    self.registers.increment(RegisterName::I, vx);
-                }
-
-                // LD F, Vx
-                0x29 => {}
-
-                // LD B, Vx
-                0x33 => {}
-
-                // LD [I], Vx
-                0x55 => {
-                    let vx = self.registers.read(RegisterName::V(x));
-                    let mut buffer: Vec<u8> = Vec::new();
-                    for i in 0..=vx {
-                        let vi = self.registers.read(RegisterName::V(i));
-                        buffer.push(vi as u8);
-                    }
-                    let i = self.registers.read(RegisterName::I);
-                    self.memory.write(i, buffer.as_slice());
-                }
-
-                // LD Vx, [I]
-                0x65 => {
-                    // let buffer = self.memory.read(self.i as usize, x + 1);
-                    // for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
-                    //     *byte = buffer[index];
-                    // }
-                }
-
-                // ERR
-                _ => panic!("Invalid opcode: {opcode:X}"),
-            },
-
-            // ERR
-            _ => panic!("Invalid opcode: {opcode:X}"),
+            Instruction::CFX65(x) => {
+                // let buffer = self.memory.read(self.i as usize, x + 1);
+                // for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
+                //     *byte = buffer[index];
+                // }
+            }
         }
     }
 }

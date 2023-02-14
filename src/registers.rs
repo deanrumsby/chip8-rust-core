@@ -10,6 +10,7 @@ pub enum RegisterName {
     V(usize),
 }
 
+#[derive(PartialEq, Eq)]
 enum RegisterValue {
     U8(u8),
     U16(u16),
@@ -95,6 +96,20 @@ impl Registers {
             }
         }
     }
+
+    // pub fn are_equal(&self, register_a: RegisterName, register_b: RegisterName) -> bool {
+    //     let register_a_value = self.map.get(&register_a).unwrap();
+    //     let register_b_value = self.map.get(&register_b).unwrap();
+    //     register_a_value == register_b_value
+    // }
+
+    // pub fn is_equal(&self, register: RegisterName, value: usize) -> bool {
+    //     let register_value = self.map.get(&register).unwrap();
+    //     match register_value {
+    //         RegisterValue::U16(current_value) => *current_value as usize == value,
+    //         RegisterValue::U8(current_value) => *current_value as usize == value,
+    //     }
+    // }
 }
 
 #[cfg(test)]
@@ -115,6 +130,31 @@ mod tests {
         registers.set(RegisterName::I, test_value);
         let register_value = registers.read(RegisterName::I);
         assert_eq!(register_value, test_value);
+    }
+
+    #[test]
+    fn is_equal_determines_true_correctly() {
+        let mut registers = Registers::new();
+        let test_value = 0x3a;
+        registers.set(RegisterName::V(3), test_value);
+        registers.set(RegisterName::V(8), test_value);
+        assert_eq!(
+            registers.are_equal(RegisterName::V(3), RegisterName::V(8)),
+            true
+        );
+    }
+
+    #[test]
+    fn is_equal_determines_false_correctly() {
+        let mut registers = Registers::new();
+        let test_value_1 = 0x3a;
+        let test_value_2 = 0x55;
+        registers.set(RegisterName::V(3), test_value_1);
+        registers.set(RegisterName::V(8), test_value_2);
+        assert_eq!(
+            registers.are_equal(RegisterName::V(3), RegisterName::V(8)),
+            false
+        );
     }
 }
 
