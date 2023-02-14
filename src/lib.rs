@@ -1,7 +1,6 @@
 mod cpu;
 mod font;
 mod memory;
-mod registers;
 mod utils;
 
 use cpu::Cpu;

@@ -2,17 +2,21 @@ mod instructions;
 
 use crate::font::FONT;
 use crate::memory::Memory;
-use crate::registers::{RegisterName, Registers};
 use crate::utils::convert_to_opcode;
 use instructions::Instruction;
 use rand::random;
 
-const OPCODE_SIZE: usize = 2;
+const OPCODE_SIZE: u16 = 2;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
 pub struct Cpu {
-    registers: Registers,
+    i: u16,
+    pc: u16,
+    sp: u8,
+    dt: u8,
+    st: u8,
+    v: [u8; 16],
     stack: [u16; 16],
     memory: Memory,
 }
@@ -20,12 +24,16 @@ pub struct Cpu {
 impl Cpu {
     pub fn new() -> Self {
         let mut memory = Memory::new();
-        let registers = Registers::new();
         memory.write(FONT_START_OFFSET, FONT.as_slice());
 
         Self {
             memory,
-            registers,
+            i: 0,
+            pc: 0,
+            sp: 0,
+            dt: 0,
+            st: 0,
+            v: [0; 16],
             stack: [0; 16],
         }
     }
@@ -37,8 +45,7 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        let pc = self.registers.read(RegisterName::PC);
-        let two_bytes = self.memory.read(pc, OPCODE_SIZE);
+        let two_bytes = self.memory.read(self.pc.into(), OPCODE_SIZE as usize);
         let opcode = convert_to_opcode(two_bytes);
         opcode
     }
@@ -47,9 +54,9 @@ impl Cpu {
         let op_type = ((opcode & 0xf000) >> 12) as usize;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
-        let nnn = (opcode & 0x0fff) as usize;
-        let nn = (opcode & 0x00ff) as usize;
-        let n = (opcode & 0x000f) as usize;
+        let nnn = (opcode & 0x0fff) as u16;
+        let nn = (opcode & 0x00ff) as u8;
+        let n = (opcode & 0x000f) as u8;
 
         match op_type {
             0x0 => match nnn {
@@ -106,123 +113,93 @@ impl Cpu {
         match instruction {
             Instruction::C00E0 => {}
 
-            Instruction::C00EE => {
-                let sp = self.registers.read(RegisterName::SP);
-                let address = self.stack[sp] as usize;
-                self.registers.set(RegisterName::PC, address);
-                self.registers.decrement(RegisterName::SP, 1);
-            }
+            Instruction::C00EE => {}
 
-            Instruction::C1NNN(nnn) => self.registers.set(RegisterName::I, nnn),
+            Instruction::C1NNN(nnn) => self.i = nnn,
 
             Instruction::C2NNN(nnn) => {
-                self.registers.increment(RegisterName::SP, 1);
-                let pc = self.registers.read(RegisterName::PC);
-                let sp = self.registers.read(RegisterName::SP);
-                self.stack[sp] = pc as u16;
-                self.registers.set(RegisterName::PC, nnn);
+                self.sp += 1;
+                self.stack[self.sp as usize] = self.pc;
+                self.pc = nnn;
             }
 
             Instruction::C3XNN(x, nn) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                if vx == nn {
-                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
+                if self.v[x] == nn {
+                    self.pc += OPCODE_SIZE;
                 }
             }
 
             Instruction::C4XNN(x, nn) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                if vx != nn {
-                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
+                if self.v[x] != nn {
+                    self.pc += OPCODE_SIZE;
                 }
             }
 
             Instruction::C5XY0(x, y) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let vy = self.registers.read(RegisterName::V(y));
-                if vx == vy {
-                    self.registers.increment(RegisterName::PC, OPCODE_SIZE);
+                if self.v[x] == self.v[y] {
+                    self.pc += OPCODE_SIZE;
                 }
             }
 
-            Instruction::C6XNN(x, nn) => self.registers.set(RegisterName::V(x), nn),
+            Instruction::C6XNN(x, nn) => {
+                self.v[x] = nn;
+            }
 
             Instruction::C7XNN(x, nn) => {
-                self.registers.increment(RegisterName::V(x), nn);
+                self.v[x] += nn;
             }
 
-            Instruction::C8XY0(x, y) => {
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(x), vy);
-            }
+            Instruction::C8XY0(x, y) => self.v[x] = self.v[y],
 
-            Instruction::C8XY1(x, y) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(x), vx | vy);
-            }
+            Instruction::C8XY1(x, y) => self.v[x] |= self.v[y],
 
-            Instruction::C8XY2(x, y) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(x), vx & vy);
-            }
+            Instruction::C8XY2(x, y) => self.v[x] &= self.v[y],
 
-            Instruction::C8XY3(x, y) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(x), vx ^ vy);
-            }
+            Instruction::C8XY3(x, y) => self.v[x] ^= self.v[y],
 
             Instruction::C8XY4(x, y) => {
-                let vy = self.registers.read(RegisterName::V(y));
-                let has_overflown = self.registers.increment(RegisterName::V(x), vy);
+                let (result, has_overflown) = self.v[x].overflowing_add(self.v[y]);
+                self.v[x] = result;
                 if has_overflown {
-                    self.registers.set(RegisterName::V(0xf), 1);
+                    self.v[0xf] = 1;
                 }
             }
 
             Instruction::C8XY5(x, y) => {
-                let vy = self.registers.read(RegisterName::V(y));
-                let has_underflown = self.registers.decrement(RegisterName::V(x), vy);
+                let (result, has_underflown) = self.v[x].overflowing_sub(self.v[y]);
+                self.v[x] = result;
                 if !has_underflown {
-                    self.registers.set(RegisterName::V(0xf), 1);
+                    self.v[0xf] = 1;
                 }
             }
 
             Instruction::C8XY6(x, y) => {
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(0xf), vy & 0x1);
-                self.registers.set(RegisterName::V(x), vy >> 1);
+                self.v[x] = self.v[y];
+                self.v[0xf] = self.v[x] & 0x1;
+                self.v[x] >>= 1
             }
 
             Instruction::C8XY7(x, y) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let has_underflown = self.registers.decrement(RegisterName::V(y), vx);
+                let (result, has_underflown) = self.v[y].overflowing_sub(self.v[x]);
+                self.v[x] = result;
                 if !has_underflown {
-                    self.registers.set(RegisterName::V(0xf), 1);
+                    self.v[0xf] = 1;
                 }
             }
 
             Instruction::C8XYE(x, y) => {
-                let vy = self.registers.read(RegisterName::V(y));
-                self.registers.set(RegisterName::V(0xf), vy & 0x80);
-                self.registers.set(RegisterName::V(x), vy << 1);
+                self.v[x] = self.v[y];
+                self.v[0xf] = self.v[x] & 0x80;
+                self.v[x] <<= 1;
             }
 
             Instruction::C9XY0(x, y) => {}
 
-            Instruction::CANNN(nnn) => self.registers.set(RegisterName::I, nnn),
+            Instruction::CANNN(nnn) => self.i = nnn,
 
-            Instruction::CBNNN(nnn) => {
-                let v0 = self.registers.read(RegisterName::V(0x0));
-                self.registers.set(RegisterName::PC, nnn + v0);
-            }
+            Instruction::CBNNN(nnn) => self.pc = nnn as u16 + self.v[0] as u16,
 
-            Instruction::CCXNN(x, nn) => {
-                let rand = random::<usize>() & nn;
-                self.registers.set(RegisterName::V(x), rand);
-            }
+            Instruction::CCXNN(x, nn) => self.v[x] = random::<u8>() & nn,
 
             Instruction::CDXYN(x, y, n) => {}
 
@@ -230,48 +207,30 @@ impl Cpu {
 
             Instruction::CEXA1(x) => {}
 
-            Instruction::CFX07(x) => {
-                let dt = self.registers.read(RegisterName::DT);
-                self.registers.set(RegisterName::V(x), dt);
-            }
+            Instruction::CFX07(x) => self.v[x] = self.dt,
 
             Instruction::CFX0A(x) => {}
 
-            Instruction::CFX15(x) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                self.registers.set(RegisterName::DT, vx);
-            }
+            Instruction::CFX15(x) => self.dt = self.v[x],
 
-            Instruction::CFX18(x) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                self.registers.set(RegisterName::ST, vx);
-            }
+            Instruction::CFX18(x) => self.st = self.v[x],
 
-            Instruction::CFX1E(x) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                self.registers.increment(RegisterName::I, vx);
-            }
+            Instruction::CFX1E(x) => self.i += self.v[x] as u16,
 
             Instruction::CFX29(x) => {}
 
             Instruction::CFX33(x) => {}
 
             Instruction::CFX55(x) => {
-                let vx = self.registers.read(RegisterName::V(x));
-                let mut buffer: Vec<u8> = Vec::new();
-                for i in 0..=vx {
-                    let vi = self.registers.read(RegisterName::V(i));
-                    buffer.push(vi as u8);
-                }
-                let i = self.registers.read(RegisterName::I);
-                self.memory.write(i, buffer.as_slice());
+                let buffer = &self.v[0..=x];
+                self.memory.write(self.i as usize, buffer);
             }
 
             Instruction::CFX65(x) => {
-                // let buffer = self.memory.read(self.i as usize, x + 1);
-                // for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
-                //     *byte = buffer[index];
-                // }
+                let buffer = self.memory.read(self.i as usize, x + 1);
+                for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
+                    *byte = buffer[index];
+                }
             }
         }
     }
