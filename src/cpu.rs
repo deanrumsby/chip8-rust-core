@@ -1,6 +1,8 @@
 mod instructions;
 
+use crate::clock::Clock;
 use crate::font::FONT;
+use crate::frame::Frame;
 use crate::memory::Memory;
 use crate::utils::concat_bytes;
 use instructions::Instruction;
@@ -19,6 +21,9 @@ pub struct Cpu {
     v: [u8; 16],
     stack: [u16; 16],
     memory: Memory,
+    frame: Frame,
+    clock: Clock,
+    is_running: bool,
 }
 
 impl Cpu {
@@ -35,12 +40,25 @@ impl Cpu {
             st: 0,
             v: [0; 16],
             stack: [0; 16],
+            frame: Frame::new(),
+            clock: Clock::new(),
+            is_running: false,
+        }
+    }
+
+    pub fn run(&mut self) {
+        self.clock.start();
+        self.is_running = true;
+
+        while self.is_running {
+            self.step();
+            self.clock.tick();
         }
     }
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
-        let instruction = self.decode(opcode);
+        let instruction = Self::decode(opcode);
         match instruction {
             Some(i) => self.execute(i),
             None => panic!("Invalid opcode: {opcode:X}"),
@@ -53,7 +71,7 @@ impl Cpu {
         opcode as u16
     }
 
-    fn decode(self, opcode: u16) -> Option<Instruction> {
+    fn decode(opcode: u16) -> Option<Instruction> {
         let op_type = ((opcode & 0xf000) >> 12) as usize;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
@@ -114,9 +132,12 @@ impl Cpu {
 
     fn execute(&mut self, instruction: Instruction) {
         match instruction {
-            Instruction::C00E0 => {}
+            Instruction::C00E0 => self.frame.clear(),
 
-            Instruction::C00EE => {}
+            Instruction::C00EE => {
+                self.pc = self.stack[self.sp as usize];
+                self.sp -= 1;
+            }
 
             Instruction::C1NNN(nnn) => self.i = nnn,
 
@@ -196,7 +217,11 @@ impl Cpu {
                 self.v[x] <<= 1;
             }
 
-            Instruction::C9XY0(x, y) => {}
+            Instruction::C9XY0(x, y) => {
+                if self.v[x] != self.v[y] {
+                    self.pc += OPCODE_SIZE;
+                }
+            }
 
             Instruction::CANNN(nnn) => self.i = nnn,
 
@@ -204,7 +229,10 @@ impl Cpu {
 
             Instruction::CCXNN(x, nn) => self.v[x] = random::<u8>() & nn,
 
-            Instruction::CDXYN(x, y, n) => {}
+            Instruction::CDXYN(x, y, n) => {
+                let sprite = self.memory.read(self.i as usize, n as usize);
+                self.frame.draw_sprite(sprite, (x, y));
+            }
 
             Instruction::CEX9E(x) => {}
 

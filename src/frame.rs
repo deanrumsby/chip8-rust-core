@@ -11,13 +11,17 @@ pub struct Frame {
 }
 
 impl Frame {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             buffer: [PIXEL_OFF; 64 * 32],
         }
     }
 
-    fn draw_sprite(&mut self, sprite: &[u8], coordinates: (usize, usize)) -> bool {
+    pub fn clear(&mut self) {
+        self.buffer = [PIXEL_OFF; 64 * 32];
+    }
+
+    pub fn draw_sprite(&mut self, sprite: &[u8], coordinates: (usize, usize)) -> bool {
         let (x, y) = Self::determine_true_coordinates(coordinates);
         let mut has_sprite_collided = false;
         for (row_index, byte) in sprite.iter().enumerate() {

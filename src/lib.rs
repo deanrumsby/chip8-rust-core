@@ -1,3 +1,4 @@
+mod clock;
 mod cpu;
 mod font;
 mod frame;
@@ -15,7 +16,7 @@ impl Chip8 {
         Self { cpu: Cpu::new() }
     }
 
-    pub fn load(&mut self, program: &[u8]) {}
+    pub fn load(&mut self) {}
 
     pub fn step(&mut self) {
         self.cpu.step();
