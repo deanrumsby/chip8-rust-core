@@ -1,5 +1,6 @@
 mod cpu;
 mod font;
+mod frame;
 mod memory;
 mod utils;
 
