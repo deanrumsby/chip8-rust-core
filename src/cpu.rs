@@ -1,6 +1,5 @@
 mod instructions;
 
-use crate::clock::Clock;
 use crate::font::FONT;
 use crate::frame::Frame;
 use crate::memory::Memory;
@@ -12,6 +11,13 @@ const OPCODE_SIZE: u16 = 2;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
+#[derive(Clone, Copy)]
+enum KeyState {
+    Up,
+    Down,
+    None,
+}
+
 pub struct Cpu {
     i: u16,
     pc: u16,
@@ -20,10 +26,9 @@ pub struct Cpu {
     st: u8,
     v: [u8; 16],
     stack: [u16; 16],
+    key_state: [KeyState; 16],
     memory: Memory,
     frame: Frame,
-    clock: Clock,
-    is_running: bool,
 }
 
 impl Cpu {
@@ -40,19 +45,8 @@ impl Cpu {
             st: 0,
             v: [0; 16],
             stack: [0; 16],
+            key_state: [KeyState::None; 16],
             frame: Frame::new(),
-            clock: Clock::new(),
-            is_running: false,
-        }
-    }
-
-    pub fn run(&mut self) {
-        self.clock.start();
-        self.is_running = true;
-
-        while self.is_running {
-            self.step();
-            self.clock.tick();
         }
     }
 
@@ -234,9 +228,21 @@ impl Cpu {
                 self.frame.draw_sprite(sprite, (x, y));
             }
 
-            Instruction::CEX9E(x) => {}
+            Instruction::CEX9E(x) => {
+                let vx = self.v[x];
+                match self.key_state[vx as usize] {
+                    KeyState::Down => self.pc += OPCODE_SIZE,
+                    _ => {}
+                }
+            }
 
-            Instruction::CEXA1(x) => {}
+            Instruction::CEXA1(x) => {
+                let vx = self.v[x];
+                match self.key_state[vx as usize] {
+                    KeyState::Down => {}
+                    _ => self.pc += OPCODE_SIZE,
+                }
+            }
 
             Instruction::CFX07(x) => self.v[x] = self.dt,
 
