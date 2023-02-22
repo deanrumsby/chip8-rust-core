@@ -1,6 +1,6 @@
 mod instructions;
 
-use crate::font::FONT;
+use crate::font::{FONT, FONT_CHAR_SIZE_BYTES};
 use crate::frame::Frame;
 use crate::memory::Memory;
 use crate::utils::concat_bytes;
@@ -11,7 +11,7 @@ const OPCODE_SIZE: u16 = 2;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum KeyState {
     Up,
     Down,
@@ -125,12 +125,15 @@ impl Cpu {
     }
 
     fn execute(&mut self, instruction: Instruction) {
+        let mut has_jumped = false;
+
         match instruction {
             Instruction::C00E0 => self.frame.clear(),
 
             Instruction::C00EE => {
                 self.pc = self.stack[self.sp as usize];
                 self.sp -= 1;
+                has_jumped = true;
             }
 
             Instruction::C1NNN(nnn) => self.i = nnn,
@@ -139,6 +142,7 @@ impl Cpu {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
                 self.pc = nnn;
+                has_jumped = true;
             }
 
             Instruction::C3XNN(x, nn) => {
@@ -219,7 +223,10 @@ impl Cpu {
 
             Instruction::CANNN(nnn) => self.i = nnn,
 
-            Instruction::CBNNN(nnn) => self.pc = nnn as u16 + self.v[0] as u16,
+            Instruction::CBNNN(nnn) => {
+                self.pc = nnn as u16 + self.v[0] as u16;
+                has_jumped = true;
+            }
 
             Instruction::CCXNN(x, nn) => self.v[x] = random::<u8>() & nn,
 
@@ -246,7 +253,12 @@ impl Cpu {
 
             Instruction::CFX07(x) => self.v[x] = self.dt,
 
-            Instruction::CFX0A(x) => {}
+            Instruction::CFX0A(x) => {
+                if let Some(key_index) = self.key_state.iter().position(|&key| key == KeyState::Up)
+                {
+                    self.v[x] = key_index as u8;
+                }
+            }
 
             Instruction::CFX15(x) => self.dt = self.v[x],
 
@@ -254,9 +266,19 @@ impl Cpu {
 
             Instruction::CFX1E(x) => self.i += self.v[x] as u16,
 
-            Instruction::CFX29(x) => {}
+            Instruction::CFX29(x) => {
+                let nibble = (self.v[x] & 0b1111) as usize;
+                self.i = (FONT_START_OFFSET + nibble * FONT_CHAR_SIZE_BYTES) as u16;
+            }
 
-            Instruction::CFX33(x) => {}
+            Instruction::CFX33(x) => {
+                let vx = self.v[x];
+                let units = vx % 10;
+                let tens = (vx / 10) % 10;
+                let hundreds = (vx / 100) % 10;
+                self.memory
+                    .write(self.i as usize, [hundreds, tens, units].as_slice());
+            }
 
             Instruction::CFX55(x) => {
                 let buffer = &self.v[0..=x];
@@ -269,6 +291,10 @@ impl Cpu {
                     *byte = buffer[index];
                 }
             }
+        }
+
+        if !has_jumped {
+            self.pc += OPCODE_SIZE;
         }
     }
 }
