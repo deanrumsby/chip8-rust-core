@@ -9,7 +9,6 @@ use instructions::Instruction;
 use rand::random;
 
 const OPCODE_SIZE: u16 = 2;
-const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
 
 pub struct Cpu {
@@ -71,7 +70,6 @@ impl Cpu {
     fn fetch(&self) -> u16 {
         let two_byte_buffer = self.memory.read(self.pc as usize, OPCODE_SIZE as usize);
         let opcode = concat_bytes(two_byte_buffer);
-        // println!("{:X}", opcode);
         opcode as u16
     }
 
