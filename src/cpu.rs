@@ -50,6 +50,13 @@ impl Cpu {
         }
     }
 
+    fn reset_key_up_state(&mut self) {
+        self.key_state = self.key_state.map(|state| match state {
+            KeyState::Up => KeyState::None,
+            other => other,
+        })
+    }
+
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction = Self::decode(opcode);
@@ -62,7 +69,7 @@ impl Cpu {
     fn fetch(&self) -> u16 {
         let two_byte_buffer = self.memory.read(self.pc as usize, OPCODE_SIZE as usize);
         let opcode = concat_bytes(two_byte_buffer);
-        println!("{:X}", opcode);
+        // println!("{:X}", opcode);
         opcode as u16
     }
 
@@ -304,5 +311,8 @@ impl Cpu {
         if !has_jumped {
             self.pc += OPCODE_SIZE;
         }
+
+        println!("{:?}", self.key_state);
+        self.reset_key_up_state();
     }
 }

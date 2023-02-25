@@ -39,8 +39,12 @@ impl Chip8 {
         self.cpu.step();
     }
 
-    pub fn handle_key_press(&mut self, key: Key) {
+    pub fn handle_key_down(&mut self, key: Key) {
         self.cpu.update_key_state(key, KeyState::Down);
+    }
+
+    pub fn handle_key_event(&mut self, key: Key, state: KeyState) {
+        self.cpu.update_key_state(key, state);
     }
 
     pub fn reset(&mut self) {}
