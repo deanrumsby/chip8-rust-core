@@ -138,8 +138,6 @@ impl Cpu {
         let mut has_jumped = false;
         self.redraw = false;
 
-        // println!("{:?}", instruction);
-
         match instruction {
             Instruction::C00E0 => self.frame.clear(),
 
@@ -262,8 +260,8 @@ impl Cpu {
             }
 
             Instruction::CEXA1(x) => {
-                let vx = self.v[x];
-                match self.key_state[vx as usize] {
+                let vx = self.v[x] as usize;
+                match self.key_state[vx] {
                     KeyState::Down => {}
                     _ => self.pc += OPCODE_SIZE,
                 }
