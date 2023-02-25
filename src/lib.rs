@@ -14,7 +14,7 @@ use std::fs;
 use std::path::Path;
 
 pub struct Chip8 {
-    cpu: Cpu,
+    pub cpu: Cpu,
     pub clock: Clock,
 }
 
@@ -37,10 +37,6 @@ impl Chip8 {
 
     pub fn step(&mut self) {
         self.cpu.step();
-    }
-
-    pub fn handle_key_down(&mut self, key: Key) {
-        self.cpu.update_key_state(key, KeyState::Down);
     }
 
     pub fn handle_key_event(&mut self, key: Key, state: KeyState) {

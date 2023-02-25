@@ -16,7 +16,6 @@ fn main() {
     let binding = env::args().nth(1).unwrap();
     let path = Path::new(binding.as_str());
     chip8.load(path);
-    // chip8.clock.start();
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
@@ -45,6 +44,8 @@ fn main() {
         (VirtualKeyCode::C, Key::Key(0xb)),
         (VirtualKeyCode::V, Key::Key(0xf)),
     ]);
+
+    chip8.clock.start();
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
@@ -93,7 +94,10 @@ fn main() {
         }
 
         chip8.step();
-        // chip8.clock.tick();
-        window.request_redraw();
+        if chip8.cpu.redraw == true {
+            window.request_redraw();
+        }
+
+        chip8.clock.tick();
     });
 }

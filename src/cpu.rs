@@ -23,6 +23,7 @@ pub struct Cpu {
     key_state: [KeyState; 16],
     pub memory: Memory,
     pub frame: Frame,
+    pub redraw: bool,
 }
 
 impl Cpu {
@@ -41,6 +42,7 @@ impl Cpu {
             stack: [0; 16],
             key_state: [KeyState::None; 16],
             frame: Frame::new(),
+            redraw: false,
         }
     }
 
@@ -134,6 +136,7 @@ impl Cpu {
 
     fn execute(&mut self, instruction: Instruction) {
         let mut has_jumped = false;
+        self.redraw = false;
 
         // println!("{:?}", instruction);
 
@@ -248,6 +251,7 @@ impl Cpu {
                 let vx = self.v[x] as usize;
                 let vy = self.v[y] as usize;
                 self.frame.draw_sprite(sprite, (vx, vy));
+                self.redraw = true;
             }
 
             Instruction::CEX9E(x) => {
@@ -312,7 +316,7 @@ impl Cpu {
             self.pc += OPCODE_SIZE;
         }
 
-        println!("{:?}", self.key_state);
+        // println!("{:?}", self.key_state);
         self.reset_key_up_state();
     }
 }
