@@ -51,7 +51,7 @@ impl Frame {
             if Self::is_offscreen((x + column_delta, y)) {
                 continue;
             }
-            let bit_index = u8::BITS as usize - column_delta;
+            let bit_index = u8::BITS as usize - column_delta - 1;
             let should_toggle = utils::is_bit_set(byte, bit_index);
             if should_toggle {
                 match *pixel {
