@@ -1,13 +1,14 @@
 mod clock;
 mod cpu;
 mod font;
-mod frame;
+pub mod frame;
 pub mod keys;
 mod memory;
 mod utils;
 
 use clock::Clock;
 use cpu::Cpu;
+use frame::Pixel;
 use keys::{Key, KeyState};
 use std::fs;
 use std::path::Path;
@@ -25,8 +26,8 @@ impl Chip8 {
         }
     }
 
-    pub fn get_frame_buffer(&self) -> &[u8] {
-        self.cpu.frame.get_buffer()
+    pub fn get_frame_buffer(&self) -> &[Pixel] {
+        self.cpu.frame.get_pixel_buffer()
     }
 
     pub fn load(&mut self, path: &Path) {

@@ -1,3 +1,4 @@
+use chip8_rust_core::frame::Pixel;
 use chip8_rust_core::keys::Key;
 use chip8_rust_core::Chip8;
 use pixels::{Pixels, SurfaceTexture};
@@ -40,7 +41,10 @@ fn main() {
                     .iter()
                     .zip(pixels.get_frame_mut().chunks_exact_mut(4))
                 {
-                    let slice = [*pixel, *pixel, *pixel, u8::MAX];
+                    let slice = match *pixel {
+                        Pixel::On => [255, 255, 255, 255],
+                        Pixel::Off => [0, 0, 0, 255],
+                    };
                     chunk.copy_from_slice(&slice);
                 }
                 if let Err(err) = pixels.render() {

@@ -1,4 +1,4 @@
-pub const FONT_CHAR_SIZE_BYTES: usize = 5;
+pub const FONT_CHAR_SIZE: usize = 5;
 
 pub const FONT: [u8; 80] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0

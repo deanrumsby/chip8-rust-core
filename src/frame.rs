@@ -1,28 +1,32 @@
-const WIDTH_PIXELS: usize = 64;
-const HEIGHT_PIXELS: usize = 32;
+const WIDTH: usize = 64;
+const HEIGHT: usize = 32;
+const PIXEL_COUNT: usize = WIDTH * HEIGHT;
 
-const PIXEL_ON: u8 = u8::MAX;
-const PIXEL_OFF: u8 = u8::MIN;
+#[derive(Clone, Copy)]
+pub enum Pixel {
+    On,
+    Off,
+}
 
 const MSB_MASK: u8 = 0b1000_0000;
 
 pub struct Frame {
-    buffer: [u8; 64 * 32],
+    pixels: [Pixel; PIXEL_COUNT],
 }
 
 impl Frame {
     pub fn new() -> Self {
         Self {
-            buffer: [PIXEL_OFF; 64 * 32],
+            pixels: [Pixel::Off; PIXEL_COUNT],
         }
     }
 
-    pub fn get_buffer(&self) -> &[u8] {
-        &self.buffer
+    pub fn get_pixel_buffer(&self) -> &[Pixel] {
+        &self.pixels
     }
 
     pub fn clear(&mut self) {
-        self.buffer = [PIXEL_OFF; 64 * 32];
+        self.pixels = [Pixel::Off; PIXEL_COUNT];
     }
 
     pub fn draw_sprite(&mut self, sprite: &[u8], coordinates: (usize, usize)) -> bool {
@@ -41,7 +45,7 @@ impl Frame {
         let (x, y) = coordinates;
         let mut has_byte_collided = false;
         let offset = Self::convert_coordinates_to_offset(coordinates);
-        let pixels = &mut self.buffer[offset..offset + u8::BITS as usize];
+        let pixels = &mut self.pixels[offset..offset + u8::BITS as usize];
 
         for (column_index, pixel) in pixels.iter_mut().enumerate() {
             if Self::is_offscreen((x + column_index, y)) {
@@ -49,11 +53,13 @@ impl Frame {
             }
             let should_toggle = (byte & MSB_MASK) != 0;
             if should_toggle {
-                if *pixel == PIXEL_ON {
-                    *pixel = PIXEL_OFF;
-                    has_byte_collided = true;
+                match *pixel {
+                    Pixel::On => {
+                        *pixel = Pixel::Off;
+                        has_byte_collided = true;
+                    }
+                    Pixel::Off => *pixel = Pixel::On,
                 }
-                *pixel = PIXEL_ON;
             }
             byte <<= 1;
         }
@@ -62,16 +68,16 @@ impl Frame {
 
     fn determine_true_coordinates(coordinates: (usize, usize)) -> (usize, usize) {
         let (x, y) = coordinates;
-        (x % WIDTH_PIXELS, y % HEIGHT_PIXELS)
+        (x % WIDTH, y % HEIGHT)
     }
 
     fn convert_coordinates_to_offset(coordinates: (usize, usize)) -> usize {
         let (x, y) = coordinates;
-        x + y * WIDTH_PIXELS
+        x + y * WIDTH
     }
 
     fn is_offscreen(coordinates: (usize, usize)) -> bool {
         let (x, y) = coordinates;
-        x >= (y + 1) * WIDTH_PIXELS
+        x >= (y + 1) * WIDTH
     }
 }

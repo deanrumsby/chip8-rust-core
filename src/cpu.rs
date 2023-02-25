@@ -1,6 +1,6 @@
 mod instructions;
 
-use crate::font::{FONT, FONT_CHAR_SIZE_BYTES};
+use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::frame::Frame;
 use crate::keys::{Key, KeyState};
 use crate::memory::Memory;
@@ -244,8 +244,8 @@ impl Cpu {
             }
 
             Instruction::CEX9E(x) => {
-                let vx = self.v[x];
-                match self.key_state[vx as usize] {
+                let vx = self.v[x] as usize;
+                match self.key_state[vx] {
                     KeyState::Down => self.pc += OPCODE_SIZE,
                     _ => {}
                 }
@@ -276,7 +276,7 @@ impl Cpu {
 
             Instruction::CFX29(x) => {
                 let nibble = (self.v[x] & 0b1111) as usize;
-                self.i = (FONT_START_OFFSET + nibble * FONT_CHAR_SIZE_BYTES) as u16;
+                self.i = (FONT_START_OFFSET + nibble * FONT_CHAR_SIZE) as u16;
             }
 
             Instruction::CFX33(x) => {
