@@ -1,3 +1,5 @@
+use crate::utils;
+
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const PIXEL_COUNT: usize = WIDTH * HEIGHT;
@@ -7,8 +9,6 @@ pub enum Pixel {
     On,
     Off,
 }
-
-const MSB_MASK: u8 = 0b1000_0000;
 
 pub struct Frame {
     pixels: [Pixel; PIXEL_COUNT],
@@ -32,8 +32,8 @@ impl Frame {
     pub fn draw_sprite(&mut self, sprite: &[u8], coordinates: (usize, usize)) -> bool {
         let (x, y) = Self::determine_true_coordinates(coordinates);
         let mut has_sprite_collided = false;
-        for (row_index, byte) in sprite.iter().enumerate() {
-            let has_byte_collided = self.draw_byte(*byte, (x, y + row_index));
+        for (row_delta, byte) in sprite.iter().enumerate() {
+            let has_byte_collided = self.draw_byte(*byte, (x, y + row_delta));
             if has_byte_collided {
                 has_sprite_collided = true;
             }
@@ -41,17 +41,18 @@ impl Frame {
         has_sprite_collided
     }
 
-    fn draw_byte(&mut self, mut byte: u8, coordinates: (usize, usize)) -> bool {
+    fn draw_byte(&mut self, byte: u8, coordinates: (usize, usize)) -> bool {
         let (x, y) = coordinates;
         let mut has_byte_collided = false;
         let offset = Self::convert_coordinates_to_offset(coordinates);
         let pixels = &mut self.pixels[offset..offset + u8::BITS as usize];
 
-        for (column_index, pixel) in pixels.iter_mut().enumerate() {
-            if Self::is_offscreen((x + column_index, y)) {
+        for (column_delta, pixel) in pixels.iter_mut().enumerate() {
+            if Self::is_offscreen((x + column_delta, y)) {
                 continue;
             }
-            let should_toggle = (byte & MSB_MASK) != 0;
+            let bit_index = u8::BITS as usize - column_delta;
+            let should_toggle = utils::is_bit_set(byte, bit_index);
             if should_toggle {
                 match *pixel {
                     Pixel::On => {
@@ -61,7 +62,6 @@ impl Frame {
                     Pixel::Off => *pixel = Pixel::On,
                 }
             }
-            byte <<= 1;
         }
         has_byte_collided
     }
