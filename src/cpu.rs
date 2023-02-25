@@ -270,9 +270,13 @@ impl Cpu {
             Instruction::CFX07(x) => self.v[x] = self.dt,
 
             Instruction::CFX0A(x) => {
-                if let Some(key_index) = self.key_state.iter().position(|&key| key == KeyState::Up)
+                match self
+                    .key_state
+                    .iter()
+                    .position(|&state| state == KeyState::Up)
                 {
-                    self.v[x] = key_index as u8;
+                    Some(key_index) => self.v[x] = key_index as u8,
+                    None => self.pc -= OPCODE_SIZE,
                 }
             }
 
@@ -280,11 +284,11 @@ impl Cpu {
 
             Instruction::CFX18(x) => self.st = self.v[x],
 
-            Instruction::CFX1E(x) => self.i += self.v[x] as u16,
+            Instruction::CFX1E(x) => self.i = self.i.wrapping_add(self.v[x] as u16),
 
             Instruction::CFX29(x) => {
                 let nibble = (self.v[x] & 0b1111) as usize;
-                self.i = (FONT_START_OFFSET + nibble * FONT_CHAR_SIZE) as u16;
+                self.i = ((FONT_START_OFFSET + nibble) * FONT_CHAR_SIZE) as u16;
             }
 
             Instruction::CFX33(x) => {
@@ -313,7 +317,6 @@ impl Cpu {
             self.pc += OPCODE_SIZE;
         }
 
-        // println!("{:?}", self.key_state);
         self.reset_key_up_state();
     }
 }
