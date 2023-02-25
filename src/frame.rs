@@ -17,6 +17,10 @@ impl Frame {
         }
     }
 
+    pub fn get_buffer(&self) -> &[u8] {
+        &self.buffer
+    }
+
     pub fn clear(&mut self) {
         self.buffer = [PIXEL_OFF; 64 * 32];
     }

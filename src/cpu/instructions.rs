@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum Instruction {
     C00E0,
     C00EE,

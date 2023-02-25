@@ -2,6 +2,7 @@ mod instructions;
 
 use crate::font::{FONT, FONT_CHAR_SIZE_BYTES};
 use crate::frame::Frame;
+use crate::keys::{Key, KeyState};
 use crate::memory::Memory;
 use crate::utils::concat_bytes;
 use instructions::Instruction;
@@ -10,13 +11,6 @@ use rand::random;
 const OPCODE_SIZE: u16 = 2;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const FONT_START_OFFSET: usize = 0;
-
-#[derive(Clone, Copy, PartialEq)]
-enum KeyState {
-    Up,
-    Down,
-    None,
-}
 
 pub struct Cpu {
     i: u16,
@@ -27,8 +21,8 @@ pub struct Cpu {
     v: [u8; 16],
     stack: [u16; 16],
     key_state: [KeyState; 16],
-    memory: Memory,
-    frame: Frame,
+    pub memory: Memory,
+    pub frame: Frame,
 }
 
 impl Cpu {
@@ -39,7 +33,7 @@ impl Cpu {
         Self {
             memory,
             i: 0,
-            pc: 0,
+            pc: 0x200,
             sp: 0,
             dt: 0,
             st: 0,
@@ -47,6 +41,12 @@ impl Cpu {
             stack: [0; 16],
             key_state: [KeyState::None; 16],
             frame: Frame::new(),
+        }
+    }
+
+    pub fn update_key_state(&mut self, key: Key, state: KeyState) {
+        match key {
+            Key::Key(index) => self.key_state[index] = state,
         }
     }
 
@@ -62,6 +62,7 @@ impl Cpu {
     fn fetch(&self) -> u16 {
         let two_byte_buffer = self.memory.read(self.pc as usize, OPCODE_SIZE as usize);
         let opcode = concat_bytes(two_byte_buffer);
+        println!("{:X}", opcode);
         opcode as u16
     }
 
@@ -127,6 +128,8 @@ impl Cpu {
     fn execute(&mut self, instruction: Instruction) {
         let mut has_jumped = false;
 
+        // println!("{:?}", instruction);
+
         match instruction {
             Instruction::C00E0 => self.frame.clear(),
 
@@ -136,7 +139,10 @@ impl Cpu {
                 has_jumped = true;
             }
 
-            Instruction::C1NNN(nnn) => self.i = nnn,
+            Instruction::C1NNN(nnn) => {
+                self.pc = nnn;
+                has_jumped = true;
+            }
 
             Instruction::C2NNN(nnn) => {
                 self.sp += 1;
@@ -232,7 +238,9 @@ impl Cpu {
 
             Instruction::CDXYN(x, y, n) => {
                 let sprite = self.memory.read(self.i as usize, n as usize);
-                self.frame.draw_sprite(sprite, (x, y));
+                let vx = self.v[x] as usize;
+                let vy = self.v[y] as usize;
+                self.frame.draw_sprite(sprite, (vx, vy));
             }
 
             Instruction::CEX9E(x) => {
