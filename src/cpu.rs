@@ -146,7 +146,6 @@ impl Cpu {
             Instruction::C00EE => {
                 self.pc = self.stack[self.sp as usize];
                 self.sp -= 1;
-                has_jumped = true;
             }
 
             Instruction::C1NNN(nnn) => {
@@ -184,7 +183,7 @@ impl Cpu {
             }
 
             Instruction::C7XNN(x, nn) => {
-                self.v[x] += nn;
+                self.v[x] = self.v[x].wrapping_add(nn);
             }
 
             Instruction::C8XY0(x, y) => self.v[x] = self.v[y],
