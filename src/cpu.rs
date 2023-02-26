@@ -1,4 +1,5 @@
 mod instructions;
+mod timer;
 
 use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::frame::Frame;
@@ -7,6 +8,9 @@ use crate::memory::Memory;
 use crate::utils::concat_bytes;
 use instructions::Instruction;
 use rand::random;
+use timer::Timer;
+
+use std::fmt;
 
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
@@ -20,6 +24,9 @@ pub struct Cpu {
     v: [u8; 16],
     stack: [u16; 16],
     key_state: [KeyState; 16],
+    sound_timer: Timer,
+    delay_timer: Timer,
+    opcode: u16,
     pub memory: Memory,
     pub frame: Frame,
     pub redraw: bool,
@@ -40,6 +47,9 @@ impl Cpu {
             v: [0; 16],
             stack: [0; 16],
             key_state: [KeyState::None; 16],
+            sound_timer: Timer::new(),
+            delay_timer: Timer::new(),
+            opcode: 0,
             frame: Frame::new(),
             redraw: false,
         }
@@ -60,11 +70,14 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
+        self.opcode = opcode;
         let instruction = Self::decode(opcode);
         match instruction {
             Some(i) => self.execute(i),
             None => panic!("Invalid opcode: {opcode:X}"),
         }
+        self.delay_timer.tick();
+        self.sound_timer.tick();
     }
 
     fn fetch(&self) -> u16 {
@@ -135,6 +148,20 @@ impl Cpu {
     fn execute(&mut self, instruction: Instruction) {
         let mut has_jumped = false;
         self.redraw = false;
+
+        if self.sound_timer.should_decrease && self.st > 0 {
+            self.st -= 1;
+            if self.st == 0 {
+                self.sound_timer.stop();
+            }
+        }
+
+        if self.delay_timer.should_decrease && self.dt > 0 {
+            self.dt -= 1;
+            if self.dt == 0 {
+                self.delay_timer.stop();
+            }
+        }
 
         match instruction {
             Instruction::C00E0 => self.frame.clear(),
@@ -245,7 +272,10 @@ impl Cpu {
                 let sprite = self.memory.read(self.i as usize, n as usize);
                 let vx = self.v[x] as usize;
                 let vy = self.v[y] as usize;
-                self.frame.draw_sprite(sprite, (vx, vy));
+                let has_collision = self.frame.draw_sprite(sprite, (vx, vy));
+                if has_collision {
+                    self.v[0xf] = 1;
+                }
                 self.redraw = true;
             }
 
@@ -278,9 +308,15 @@ impl Cpu {
                 }
             }
 
-            Instruction::CFX15(x) => self.dt = self.v[x],
+            Instruction::CFX15(x) => {
+                self.dt = self.v[x];
+                self.delay_timer.start();
+            }
 
-            Instruction::CFX18(x) => self.st = self.v[x],
+            Instruction::CFX18(x) => {
+                self.st = self.v[x];
+                self.sound_timer.start();
+            }
 
             Instruction::CFX1E(x) => self.i = self.i.wrapping_add(self.v[x] as u16),
 
@@ -316,5 +352,34 @@ impl Cpu {
         }
 
         self.reset_key_up_state();
+    }
+}
+
+impl fmt::Debug for Cpu {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("CPU")
+            .field("OPCODE", &format!("{:04X}", &self.opcode))
+            .field("PC", &format!("{:04X}", &self.pc))
+            .field("I", &format!("{:04X}", &self.i))
+            .field("SP", &format!("{:02X}", &self.sp))
+            .field("DT", &format!("{:02X}", &self.dt))
+            .field("ST", &format!("{:02X}", &self.st))
+            .field("V0", &format!("{:02X}", &self.v[0]))
+            .field("V1", &format!("{:02X}", &self.v[1]))
+            .field("V2", &format!("{:02X}", &self.v[2]))
+            .field("V3", &format!("{:02X}", &self.v[3]))
+            .field("V4", &format!("{:02X}", &self.v[4]))
+            .field("V5", &format!("{:02X}", &self.v[5]))
+            .field("V6", &format!("{:02X}", &self.v[6]))
+            .field("V7", &format!("{:02X}", &self.v[7]))
+            .field("V8", &format!("{:02X}", &self.v[8]))
+            .field("V9", &format!("{:02X}", &self.v[9]))
+            .field("VA", &format!("{:02X}", &self.v[10]))
+            .field("VB", &format!("{:02X}", &self.v[11]))
+            .field("VC", &format!("{:02X}", &self.v[12]))
+            .field("VD", &format!("{:02X}", &self.v[13]))
+            .field("VE", &format!("{:02X}", &self.v[14]))
+            .field("VF", &format!("{:02X}", &self.v[15]))
+            .finish()
     }
 }

@@ -5,6 +5,7 @@ use pixels::{Pixels, SurfaceTexture};
 use std::collections::HashMap;
 use std::env;
 use std::path::Path;
+use winit::dpi::LogicalSize;
 use winit::{
     event::{ElementState, Event, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
@@ -18,7 +19,10 @@ fn main() {
     chip8.load(path);
 
     let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop).unwrap();
+    let window = WindowBuilder::new()
+        .with_inner_size(LogicalSize::new(64 * 10, 32 * 10))
+        .build(&event_loop)
+        .unwrap();
 
     let mut pixels = {
         let window_size = window.inner_size();
@@ -45,7 +49,7 @@ fn main() {
         (VirtualKeyCode::V, Key::Key(0xf)),
     ]);
 
-    chip8.clock.start();
+    // chip8.clock.start();
 
     event_loop.run(move |event, _, control_flow| {
         control_flow.set_poll();
@@ -84,20 +88,25 @@ fn main() {
                         is_synthetic: _,
                     },
             } => {
-                let key = key_map.get(&input.virtual_keycode.unwrap()).unwrap();
-                match input.state {
-                    ElementState::Pressed => chip8.handle_key_event(*key, KeyState::Down),
-                    ElementState::Released => chip8.handle_key_event(*key, KeyState::Up),
+                if let VirtualKeyCode::Space = input.virtual_keycode.unwrap() {
+                    chip8.step();
+                    println!("{:?}", chip8.cpu);
+                } else {
+                    let key = key_map.get(&input.virtual_keycode.unwrap()).unwrap();
+                    match input.state {
+                        ElementState::Pressed => chip8.handle_key_event(*key, KeyState::Down),
+                        ElementState::Released => chip8.handle_key_event(*key, KeyState::Up),
+                    }
                 }
             }
             _ => (),
         }
 
-        chip8.step();
+        // chip8.step();
         if chip8.cpu.redraw == true {
             window.request_redraw();
         }
 
-        chip8.clock.tick();
+        // chip8.clock.tick();
     });
 }

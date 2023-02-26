@@ -78,6 +78,6 @@ impl Frame {
 
     fn is_offscreen(coordinates: (usize, usize)) -> bool {
         let (x, y) = coordinates;
-        x >= (y + 1) * WIDTH
+        x >= WIDTH || y >= HEIGHT
     }
 }

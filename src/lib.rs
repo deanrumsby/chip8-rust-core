@@ -10,6 +10,7 @@ use clock::Clock;
 use cpu::Cpu;
 use frame::Pixel;
 use keys::{Key, KeyState};
+use std::fmt;
 use std::fs;
 use std::path::Path;
 
