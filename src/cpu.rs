@@ -70,6 +70,7 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
+        self.redraw = false;
         self.opcode = opcode;
         let instruction = Self::decode(opcode);
         match instruction {
@@ -147,7 +148,6 @@ impl Cpu {
 
     fn execute(&mut self, instruction: Instruction) {
         let mut has_jumped = false;
-        self.redraw = false;
 
         if self.sound_timer.should_decrease && self.st > 0 {
             self.st -= 1;
@@ -164,7 +164,10 @@ impl Cpu {
         }
 
         match instruction {
-            Instruction::C00E0 => self.frame.clear(),
+            Instruction::C00E0 => {
+                self.frame.clear();
+                self.redraw = true;
+            }
 
             Instruction::C00EE => {
                 self.pc = self.stack[self.sp as usize];
@@ -222,6 +225,8 @@ impl Cpu {
                 self.v[x] = result;
                 if has_overflown {
                     self.v[0xf] = 1;
+                } else {
+                    self.v[0xf] = 0;
                 }
             }
 
@@ -230,6 +235,8 @@ impl Cpu {
                 self.v[x] = result;
                 if !has_underflown {
                     self.v[0xf] = 1;
+                } else {
+                    self.v[0xf] = 0;
                 }
             }
 
@@ -244,12 +251,14 @@ impl Cpu {
                 self.v[x] = result;
                 if !has_underflown {
                     self.v[0xf] = 1;
+                } else {
+                    self.v[0xf] = 0;
                 }
             }
 
             Instruction::C8XYE(x, y) => {
                 self.v[x] = self.v[y];
-                self.v[0xf] = self.v[x] & 0x80;
+                self.v[0xf] = (self.v[x] >> 7) & 0x1;
                 self.v[x] <<= 1;
             }
 
@@ -275,6 +284,8 @@ impl Cpu {
                 let has_collision = self.frame.draw_sprite(sprite, (vx, vy));
                 if has_collision {
                     self.v[0xf] = 1;
+                } else {
+                    self.v[0xf] = 0;
                 }
                 self.redraw = true;
             }
@@ -322,7 +333,7 @@ impl Cpu {
 
             Instruction::CFX29(x) => {
                 let nibble = (self.v[x] & 0b1111) as usize;
-                self.i = ((FONT_START_OFFSET + nibble) * FONT_CHAR_SIZE) as u16;
+                self.i = (FONT_START_OFFSET + (nibble * FONT_CHAR_SIZE)) as u16;
             }
 
             Instruction::CFX33(x) => {

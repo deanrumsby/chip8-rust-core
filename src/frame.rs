@@ -1,15 +1,18 @@
+use std::fmt::Debug;
+
 use crate::utils;
 
 const WIDTH: usize = 64;
 const HEIGHT: usize = 32;
 const PIXEL_COUNT: usize = WIDTH * HEIGHT;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Pixel {
     On,
     Off,
 }
 
+#[derive(Debug)]
 pub struct Frame {
     pixels: [Pixel; PIXEL_COUNT],
 }

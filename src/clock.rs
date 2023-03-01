@@ -35,7 +35,7 @@ impl Clock {
             thread::sleep(dt);
         }
         if self.cycle_count == INSTRUCTIONS_PER_SECOND {
-            println!("{:?}", self.start_time.unwrap().elapsed());
+            // println!("{:?}", self.start_time.unwrap().elapsed());
             self.start_time = Some(Instant::now());
             self.cycle_count = 0;
         }
