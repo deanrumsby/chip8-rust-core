@@ -236,3 +236,54 @@ pub enum Instruction {
     /// The interpreter reads values from memory starting at location I into registers V0 through Vx.
     CFX65(usize),
 }
+
+impl TryFrom<u16> for Instruction {
+    type Error = &'static str;
+
+    fn try_from(opcode: u16) -> Result<Self, Self::Error> {
+        let op_type = ((opcode & 0xf000) >> 12) as usize;
+        let x = ((opcode & 0x0f00) >> 8) as usize;
+        let y = ((opcode & 0x00f0) >> 4) as usize;
+        let nnn = (opcode & 0x0fff) as u16;
+        let nn = (opcode & 0x00ff) as u8;
+        let n = (opcode & 0x000f) as u8;
+
+        match (op_type, x, y, n) {
+            (0x0, 0x0, 0xe, 0x0) => Ok(Instruction::C00E0),
+            (0x0, 0x0, 0xe, 0xe) => Ok(Instruction::C00EE),
+            (0x1, _, _, _) => Ok(Instruction::C1NNN(nnn)),
+            (0x2, _, _, _) => Ok(Instruction::C2NNN(nnn)),
+            (0x3, _, _, _) => Ok(Instruction::C3XNN(x, nn)),
+            (0x4, _, _, _) => Ok(Instruction::C4XNN(x, nn)),
+            (0x5, _, _, 0x0) => Ok(Instruction::C5XY0(x, y)),
+            (0x6, _, _, _) => Ok(Instruction::C6XNN(x, nn)),
+            (0x7, _, _, _) => Ok(Instruction::C7XNN(x, nn)),
+            (0x8, _, _, 0x0) => Ok(Instruction::C8XY0(x, y)),
+            (0x8, _, _, 0x1) => Ok(Instruction::C8XY1(x, y)),
+            (0x8, _, _, 0x2) => Ok(Instruction::C8XY2(x, y)),
+            (0x8, _, _, 0x3) => Ok(Instruction::C8XY3(x, y)),
+            (0x8, _, _, 0x4) => Ok(Instruction::C8XY4(x, y)),
+            (0x8, _, _, 0x5) => Ok(Instruction::C8XY5(x, y)),
+            (0x8, _, _, 0x6) => Ok(Instruction::C8XY6(x, y)),
+            (0x8, _, _, 0x7) => Ok(Instruction::C8XY7(x, y)),
+            (0x8, _, _, 0xe) => Ok(Instruction::C8XYE(x, y)),
+            (0x9, _, _, 0x0) => Ok(Instruction::C9XY0(x, y)),
+            (0xa, _, _, _) => Ok(Instruction::CANNN(nnn)),
+            (0xb, _, _, _) => Ok(Instruction::CBNNN(nnn)),
+            (0xc, _, _, _) => Ok(Instruction::CCXNN(x, nn)),
+            (0xd, _, _, _) => Ok(Instruction::CDXYN(x, y, n)),
+            (0xe, _, 0x9, 0xe) => Ok(Instruction::CEX9E(x)),
+            (0xe, _, 0xa, 0x1) => Ok(Instruction::CEXA1(x)),
+            (0xf, _, 0x0, 0x7) => Ok(Instruction::CFX07(x)),
+            (0xf, _, 0x0, 0xa) => Ok(Instruction::CFX0A(x)),
+            (0xf, _, 0x1, 0x5) => Ok(Instruction::CFX15(x)),
+            (0xf, _, 0x1, 0x8) => Ok(Instruction::CFX18(x)),
+            (0xf, _, 0x1, 0xe) => Ok(Instruction::CFX1E(x)),
+            (0xf, _, 0x2, 0x9) => Ok(Instruction::CFX29(x)),
+            (0xf, _, 0x3, 0x3) => Ok(Instruction::CFX33(x)),
+            (0xf, _, 0x5, 0x5) => Ok(Instruction::CFX55(x)),
+            (0xf, _, 0x6, 0x5) => Ok(Instruction::CFX65(x)),
+            _ => Err("Invalid opcode"),
+        }
+    }
+}
