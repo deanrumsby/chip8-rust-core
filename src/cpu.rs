@@ -4,7 +4,6 @@ mod timer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::frame::Frame;
 use crate::keys::{Key, KeyState};
-use crate::memory::Memory;
 use instructions::Instruction;
 use rand::random;
 use timer::Timer;
@@ -15,8 +14,9 @@ const KEY_COUNT: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
+const MEMORY_SIZE: usize = 4096;
 
-enum ProgramCounterAction {
+enum ProgramCounterStatus {
     Repeat,
     Next,
     Skip,
@@ -24,43 +24,51 @@ enum ProgramCounterAction {
 }
 
 pub struct Cpu {
-    i: u16,
     pc: u16,
+    i: u16,
     sp: u8,
     dt: u8,
     st: u8,
     v: [u8; V_REG_COUNT],
     stack: [u16; STACK_SIZE],
+    ram: [u8; MEMORY_SIZE],
     key_state: [KeyState; KEY_COUNT],
     sound_timer: Timer,
     delay_timer: Timer,
-    opcode: u16,
-    pub memory: Memory,
     pub frame: Frame,
     pub redraw: bool,
 }
 
 impl Cpu {
     pub fn new() -> Self {
-        let mut memory = Memory::new();
-        memory.write(FONT_START_OFFSET, FONT.as_slice());
-
-        Self {
-            memory,
-            i: 0,
+        let mut interpreter = Self {
             pc: PROGRAM_START_OFFSET,
+            i: 0,
             sp: 0,
             dt: 0,
             st: 0,
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
+            ram: [0; MEMORY_SIZE],
             key_state: [KeyState::None; KEY_COUNT],
             sound_timer: Timer::new(),
             delay_timer: Timer::new(),
-            opcode: 0,
             frame: Frame::new(),
             redraw: false,
-        }
+        };
+
+        interpreter.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
+
+        interpreter
+    }
+
+    pub fn load_into_memory(&mut self, offset: usize, bytes: &[u8]) {
+        let range = offset..offset + bytes.len();
+        self.ram[range].copy_from_slice(bytes);
+    }
+
+    fn read_from_memory(&self, offset: usize, size: usize) -> &[u8] {
+        &self.ram[offset..offset + size]
     }
 
     pub fn update_key_state(&mut self, key: Key, state: KeyState) {
@@ -79,14 +87,13 @@ impl Cpu {
     pub fn step(&mut self) {
         let opcode = self.fetch();
         self.redraw = false;
-        self.opcode = opcode;
         let instruction = Instruction::try_from(opcode).unwrap();
         
         match self.execute(instruction) {
-            ProgramCounterAction::Repeat => (),
-            ProgramCounterAction::Next => self.pc += OPCODE_SIZE,
-            ProgramCounterAction::Skip => self.pc += OPCODE_SIZE * 2,
-            ProgramCounterAction::Jump(address) => self.pc = address,
+            ProgramCounterStatus::Repeat => (),
+            ProgramCounterStatus::Next => self.pc += OPCODE_SIZE,
+            ProgramCounterStatus::Skip => self.pc += OPCODE_SIZE * 2,
+            ProgramCounterStatus::Jump(address) => self.pc = address,
         }
 
         self.delay_timer.tick();
@@ -94,13 +101,14 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        let two_byte_buffer = self.memory.read(self.pc as usize, OPCODE_SIZE as usize);
-        let opcode = u16::from_be_bytes([two_byte_buffer[0], two_byte_buffer[1]]);
-        opcode as u16
+        u16::from_be_bytes([
+            self.ram[self.pc as usize],
+            self.ram[self.pc as usize + 1],
+        ])
     }
 
-    fn execute(&mut self, instruction: Instruction) -> ProgramCounterAction {
-        let mut program_counter_action = ProgramCounterAction::Next;
+    fn execute(&mut self, instruction: Instruction) -> ProgramCounterStatus {
+        let mut program_counter_status = ProgramCounterStatus::Next;
         
         if self.sound_timer.should_decrease && self.st > 0 {
             self.st -= 1;
@@ -128,30 +136,30 @@ impl Cpu {
             }
 
             Instruction::OpCode1NNN(nnn) => {
-                program_counter_action = ProgramCounterAction::Jump(nnn);
+                program_counter_status = ProgramCounterStatus::Jump(nnn);
             }
 
             Instruction::OpCode2NNN(nnn) => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
-                program_counter_action = ProgramCounterAction::Jump(nnn);
+                program_counter_status = ProgramCounterStatus::Jump(nnn);
             }
 
             Instruction::OpCode3XNN(x, nn) => {
                 if self.v[x] == nn {
-                    program_counter_action = ProgramCounterAction::Skip;
+                    program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
             Instruction::OpCode4XNN(x, nn) => {
                 if self.v[x] != nn {
-                    program_counter_action = ProgramCounterAction::Skip;
+                    program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
             Instruction::OpCode5XY0(x, y) => {
                 if self.v[x] == self.v[y] {
-                    program_counter_action = ProgramCounterAction::Skip;
+                    program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
@@ -223,7 +231,7 @@ impl Cpu {
 
             Instruction::OpCode9XY0(x, y) => {
                 if self.v[x] != self.v[y] {
-                    program_counter_action = ProgramCounterAction::Skip;
+                    program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
@@ -232,7 +240,7 @@ impl Cpu {
             }
 
             Instruction::OpCodeBNNN(nnn) => {
-                program_counter_action = ProgramCounterAction::Jump(nnn + self.v[0] as u16);
+                program_counter_status = ProgramCounterStatus::Jump(nnn + self.v[0] as u16);
             }
 
             Instruction::OpCodeCXNN(x, nn) => {
@@ -240,7 +248,7 @@ impl Cpu {
             }
 
             Instruction::OpCodeDXYN(x, y, n) => {
-                let sprite = self.memory.read(self.i as usize, n as usize);
+                let sprite = &self.ram[self.i as usize..self.i as usize + n as usize];
                 let vx = self.v[x] as usize;
                 let vy = self.v[y] as usize;
                 let has_collision = self.frame.draw_sprite(sprite, (vx, vy));
@@ -255,7 +263,7 @@ impl Cpu {
             Instruction::OpCodeEX9E(x) => {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
-                    KeyState::Down => program_counter_action = ProgramCounterAction::Skip,
+                    KeyState::Down => program_counter_status = ProgramCounterStatus::Skip,
                     _ => {}
                 }
             }
@@ -264,7 +272,7 @@ impl Cpu {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
                     KeyState::Down => {}
-                    _ => program_counter_action = ProgramCounterAction::Skip,
+                    _ => program_counter_status = ProgramCounterStatus::Skip,
                 }
             }
 
@@ -279,7 +287,7 @@ impl Cpu {
                     .position(|&state| state == KeyState::Up)
                 {
                     Some(key_index) => self.v[x] = key_index as u8,
-                    None => program_counter_action = ProgramCounterAction::Repeat,
+                    None => program_counter_status = ProgramCounterStatus::Repeat,
                 }
             }
 
@@ -307,23 +315,20 @@ impl Cpu {
                 let units = vx % 10;
                 let tens = (vx / 10) % 10;
                 let hundreds = (vx / 100) % 10;
-                self.memory
-                    .write(self.i as usize, [hundreds, tens, units].as_slice());
+                self.load_into_memory(self.i as usize, &[hundreds, tens, units]);
             }
 
             Instruction::OpCodeFX55(x) => {
-                let buffer = &self.v[0..=x];
-                self.memory.write(self.i as usize, buffer);
+                let buffer = &self.v[0..=x].to_owned();
+                self.load_into_memory(self.i as usize, buffer);
             }
 
             Instruction::OpCodeFX65(x) => {
-                let buffer = self.memory.read(self.i as usize, x + 1);
-                for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
-                    *byte = buffer[index];
-                }
+                let buffer = &self.read_from_memory(self.i as usize, x + 1).to_owned();
+                self.v[0..=x].copy_from_slice(buffer);
             }
         }
 
-        program_counter_action
+        program_counter_status
     }
 }

@@ -1,4 +1,3 @@
-#[derive(Debug)]
 pub enum Instruction {
     /// *00E0 - CLS*
     ///

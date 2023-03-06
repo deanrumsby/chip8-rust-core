@@ -3,14 +3,12 @@ mod cpu;
 mod font;
 pub mod frame;
 pub mod keys;
-mod memory;
 mod utils;
 
 use clock::Clock;
 use cpu::Cpu;
 use frame::Pixel;
 use keys::{Key, KeyState};
-use std::fmt;
 use std::fs;
 use std::path::Path;
 
@@ -33,7 +31,7 @@ impl Chip8 {
 
     pub fn load(&mut self, path: &Path) {
         let buffer = fs::read(path).unwrap();
-        self.cpu.memory.write(0x200, &buffer)
+        self.cpu.load_into_memory(0x200, buffer.as_slice());
     }
 
     pub fn step(&mut self) {
