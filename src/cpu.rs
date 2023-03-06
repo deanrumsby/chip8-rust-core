@@ -115,69 +115,69 @@ impl Cpu {
         }
 
         match instruction {
-            Instruction::C00E0 => {
+            Instruction::OpCode00E0 => {
                 self.frame.clear();
                 self.redraw = true;
             }
 
-            Instruction::C00EE => {
+            Instruction::OpCode00EE => {
                 self.pc = self.stack[self.sp as usize];
                 self.sp -= 1;
             }
 
-            Instruction::C1NNN(nnn) => {
+            Instruction::OpCode1NNN(nnn) => {
                 program_counter_action = ProgramCounterAction::Jump(nnn);
             }
 
-            Instruction::C2NNN(nnn) => {
+            Instruction::OpCode2NNN(nnn) => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
                 program_counter_action = ProgramCounterAction::Jump(nnn);
             }
 
-            Instruction::C3XNN(x, nn) => {
+            Instruction::OpCode3XNN(x, nn) => {
                 if self.v[x] == nn {
                     program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
-            Instruction::C4XNN(x, nn) => {
+            Instruction::OpCode4XNN(x, nn) => {
                 if self.v[x] != nn {
                     program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
-            Instruction::C5XY0(x, y) => {
+            Instruction::OpCode5XY0(x, y) => {
                 if self.v[x] == self.v[y] {
                     program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
-            Instruction::C6XNN(x, nn) => {
+            Instruction::OpCode6XNN(x, nn) => {
                 self.v[x] = nn;
             }
 
-            Instruction::C7XNN(x, nn) => {
+            Instruction::OpCode7XNN(x, nn) => {
                 self.v[x] = self.v[x].wrapping_add(nn);
             }
 
-            Instruction::C8XY0(x, y) => {
+            Instruction::OpCode8XY0(x, y) => {
                 self.v[x] = self.v[y];
             }
 
-            Instruction::C8XY1(x, y) => {
+            Instruction::OpCode8XY1(x, y) => {
                 self.v[x] |= self.v[y];
             }
 
-            Instruction::C8XY2(x, y) => {
+            Instruction::OpCode8XY2(x, y) => {
                 self.v[x] &= self.v[y];
             }
 
-            Instruction::C8XY3(x, y) => {
+            Instruction::OpCode8XY3(x, y) => {
                 self.v[x] ^= self.v[y];
             }
 
-            Instruction::C8XY4(x, y) => {
+            Instruction::OpCode8XY4(x, y) => {
                 let (result, has_overflown) = self.v[x].overflowing_add(self.v[y]);
                 self.v[x] = result;
                 if has_overflown {
@@ -187,7 +187,7 @@ impl Cpu {
                 }
             }
 
-            Instruction::C8XY5(x, y) => {
+            Instruction::OpCode8XY5(x, y) => {
                 let (result, has_underflown) = self.v[x].overflowing_sub(self.v[y]);
                 self.v[x] = result;
                 if !has_underflown {
@@ -197,13 +197,13 @@ impl Cpu {
                 }
             }
 
-            Instruction::C8XY6(x, y) => {
+            Instruction::OpCode8XY6(x, y) => {
                 self.v[x] = self.v[y];
                 self.v[0xf] = self.v[x] & 0x1;
                 self.v[x] >>= 1
             }
 
-            Instruction::C8XY7(x, y) => {
+            Instruction::OpCode8XY7(x, y) => {
                 let (result, has_underflown) = self.v[y].overflowing_sub(self.v[x]);
                 self.v[x] = result;
                 if !has_underflown {
@@ -213,31 +213,31 @@ impl Cpu {
                 }
             }
 
-            Instruction::C8XYE(x, y) => {
+            Instruction::OpCode8XYE(x, y) => {
                 self.v[x] = self.v[y];
                 self.v[0xf] = (self.v[x] >> 7) & 0x1;
                 self.v[x] <<= 1;
             }
 
-            Instruction::C9XY0(x, y) => {
+            Instruction::OpCode9XY0(x, y) => {
                 if self.v[x] != self.v[y] {
                     program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
-            Instruction::CANNN(nnn) => {
+            Instruction::OpCodeANNN(nnn) => {
                 self.i = nnn;
             }
 
-            Instruction::CBNNN(nnn) => {
+            Instruction::OpCodeBNNN(nnn) => {
                 program_counter_action = ProgramCounterAction::Jump(nnn + self.v[0] as u16);
             }
 
-            Instruction::CCXNN(x, nn) => {
+            Instruction::OpCodeCXNN(x, nn) => {
                 self.v[x] = random::<u8>() & nn;
             }
 
-            Instruction::CDXYN(x, y, n) => {
+            Instruction::OpCodeDXYN(x, y, n) => {
                 let sprite = self.memory.read(self.i as usize, n as usize);
                 let vx = self.v[x] as usize;
                 let vy = self.v[y] as usize;
@@ -250,7 +250,7 @@ impl Cpu {
                 self.redraw = true;
             }
 
-            Instruction::CEX9E(x) => {
+            Instruction::OpCodeEX9E(x) => {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
                     KeyState::Down => program_counter_action = ProgramCounterAction::Skip,
@@ -258,7 +258,7 @@ impl Cpu {
                 }
             }
 
-            Instruction::CEXA1(x) => {
+            Instruction::OpCodeEXA1(x) => {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
                     KeyState::Down => {}
@@ -266,11 +266,11 @@ impl Cpu {
                 }
             }
 
-            Instruction::CFX07(x) => {
+            Instruction::OpCodeFX07(x) => {
                 self.v[x] = self.dt;
             }
 
-            Instruction::CFX0A(x) => {
+            Instruction::OpCodeFX0A(x) => {
                 match self
                     .key_state
                     .iter()
@@ -281,26 +281,26 @@ impl Cpu {
                 }
             }
 
-            Instruction::CFX15(x) => {
+            Instruction::OpCodeFX15(x) => {
                 self.dt = self.v[x];
                 self.delay_timer.start();
             }
 
-            Instruction::CFX18(x) => {
+            Instruction::OpCodeFX18(x) => {
                 self.st = self.v[x];
                 self.sound_timer.start();
             }
 
-            Instruction::CFX1E(x) => {
+            Instruction::OpCodeFX1E(x) => {
                 self.i = self.i.wrapping_add(self.v[x] as u16);
             }
 
-            Instruction::CFX29(x) => {
+            Instruction::OpCodeFX29(x) => {
                 let nibble = (self.v[x] & 0b1111) as usize;
                 self.i = (FONT_START_OFFSET + (nibble * FONT_CHAR_SIZE)) as u16;
             }
 
-            Instruction::CFX33(x) => {
+            Instruction::OpCodeFX33(x) => {
                 let vx = self.v[x];
                 let units = vx % 10;
                 let tens = (vx / 10) % 10;
@@ -309,12 +309,12 @@ impl Cpu {
                     .write(self.i as usize, [hundreds, tens, units].as_slice());
             }
 
-            Instruction::CFX55(x) => {
+            Instruction::OpCodeFX55(x) => {
                 let buffer = &self.v[0..=x];
                 self.memory.write(self.i as usize, buffer);
             }
 
-            Instruction::CFX65(x) => {
+            Instruction::OpCodeFX65(x) => {
                 let buffer = self.memory.read(self.i as usize, x + 1);
                 for (index, byte) in self.v[0..=x].iter_mut().enumerate() {
                     *byte = buffer[index];
