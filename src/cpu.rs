@@ -9,10 +9,19 @@ use instructions::Instruction;
 use rand::random;
 use timer::Timer;
 
-use std::fmt;
-
+const V_REG_COUNT: usize = 16;
+const STACK_SIZE: usize = 16;
+const KEY_COUNT: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
+const PROGRAM_START_OFFSET: u16 = 0x200;
+
+enum ProgramCounterAction {
+    Repeat,
+    Next,
+    Skip,
+    Jump(u16),
+}
 
 pub struct Cpu {
     i: u16,
@@ -20,22 +29,15 @@ pub struct Cpu {
     sp: u8,
     dt: u8,
     st: u8,
-    v: [u8; 16],
-    stack: [u16; 16],
-    key_state: [KeyState; 16],
+    v: [u8; V_REG_COUNT],
+    stack: [u16; STACK_SIZE],
+    key_state: [KeyState; KEY_COUNT],
     sound_timer: Timer,
     delay_timer: Timer,
     opcode: u16,
     pub memory: Memory,
     pub frame: Frame,
     pub redraw: bool,
-}
-
-enum ProgramCounterAction {
-    Repeat,
-    Next,
-    Skip,
-    Jump(u16),
 }
 
 impl Cpu {
@@ -46,13 +48,13 @@ impl Cpu {
         Self {
             memory,
             i: 0,
-            pc: 0x200,
+            pc: PROGRAM_START_OFFSET,
             sp: 0,
             dt: 0,
             st: 0,
-            v: [0; 16],
-            stack: [0; 16],
-            key_state: [KeyState::None; 16],
+            v: [0; V_REG_COUNT],
+            stack: [0; STACK_SIZE],
+            key_state: [KeyState::None; KEY_COUNT],
             sound_timer: Timer::new(),
             delay_timer: Timer::new(),
             opcode: 0,
