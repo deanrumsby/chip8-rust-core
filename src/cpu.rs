@@ -5,7 +5,6 @@ use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::frame::Frame;
 use crate::keys::{Key, KeyState};
 use crate::memory::Memory;
-use crate::utils::concat_bytes;
 use instructions::Instruction;
 use rand::random;
 use timer::Timer;
@@ -30,6 +29,13 @@ pub struct Cpu {
     pub memory: Memory,
     pub frame: Frame,
     pub redraw: bool,
+}
+
+enum ProgramCounterAction {
+    Repeat,
+    Next,
+    Skip,
+    Jump(u16),
 }
 
 impl Cpu {
@@ -73,20 +79,27 @@ impl Cpu {
         self.redraw = false;
         self.opcode = opcode;
         let instruction = Instruction::try_from(opcode).unwrap();
-        self.execute(instruction);
+        
+        match self.execute(instruction) {
+            ProgramCounterAction::Repeat => (),
+            ProgramCounterAction::Next => self.pc += OPCODE_SIZE,
+            ProgramCounterAction::Skip => self.pc += OPCODE_SIZE * 2,
+            ProgramCounterAction::Jump(address) => self.pc = address,
+        }
+
         self.delay_timer.tick();
         self.sound_timer.tick();
     }
 
     fn fetch(&self) -> u16 {
         let two_byte_buffer = self.memory.read(self.pc as usize, OPCODE_SIZE as usize);
-        let opcode = concat_bytes(two_byte_buffer);
+        let opcode = u16::from_be_bytes([two_byte_buffer[0], two_byte_buffer[1]]);
         opcode as u16
     }
 
-    fn execute(&mut self, instruction: Instruction) {
-        let mut has_jumped = false;
-
+    fn execute(&mut self, instruction: Instruction) -> ProgramCounterAction {
+        let mut program_counter_action = ProgramCounterAction::Next;
+        
         if self.sound_timer.should_decrease && self.st > 0 {
             self.st -= 1;
             if self.st == 0 {
@@ -113,32 +126,30 @@ impl Cpu {
             }
 
             Instruction::C1NNN(nnn) => {
-                self.pc = nnn;
-                has_jumped = true;
+                program_counter_action = ProgramCounterAction::Jump(nnn);
             }
 
             Instruction::C2NNN(nnn) => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
-                self.pc = nnn;
-                has_jumped = true;
+                program_counter_action = ProgramCounterAction::Jump(nnn);
             }
 
             Instruction::C3XNN(x, nn) => {
                 if self.v[x] == nn {
-                    self.pc += OPCODE_SIZE;
+                    program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
             Instruction::C4XNN(x, nn) => {
                 if self.v[x] != nn {
-                    self.pc += OPCODE_SIZE;
+                    program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
             Instruction::C5XY0(x, y) => {
                 if self.v[x] == self.v[y] {
-                    self.pc += OPCODE_SIZE;
+                    program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
@@ -150,13 +161,21 @@ impl Cpu {
                 self.v[x] = self.v[x].wrapping_add(nn);
             }
 
-            Instruction::C8XY0(x, y) => self.v[x] = self.v[y],
+            Instruction::C8XY0(x, y) => {
+                self.v[x] = self.v[y];
+            }
 
-            Instruction::C8XY1(x, y) => self.v[x] |= self.v[y],
+            Instruction::C8XY1(x, y) => {
+                self.v[x] |= self.v[y];
+            }
 
-            Instruction::C8XY2(x, y) => self.v[x] &= self.v[y],
+            Instruction::C8XY2(x, y) => {
+                self.v[x] &= self.v[y];
+            }
 
-            Instruction::C8XY3(x, y) => self.v[x] ^= self.v[y],
+            Instruction::C8XY3(x, y) => {
+                self.v[x] ^= self.v[y];
+            }
 
             Instruction::C8XY4(x, y) => {
                 let (result, has_overflown) = self.v[x].overflowing_add(self.v[y]);
@@ -202,18 +221,21 @@ impl Cpu {
 
             Instruction::C9XY0(x, y) => {
                 if self.v[x] != self.v[y] {
-                    self.pc += OPCODE_SIZE;
+                    program_counter_action = ProgramCounterAction::Skip;
                 }
             }
 
-            Instruction::CANNN(nnn) => self.i = nnn,
-
-            Instruction::CBNNN(nnn) => {
-                self.pc = nnn as u16 + self.v[0] as u16;
-                has_jumped = true;
+            Instruction::CANNN(nnn) => {
+                self.i = nnn;
             }
 
-            Instruction::CCXNN(x, nn) => self.v[x] = random::<u8>() & nn,
+            Instruction::CBNNN(nnn) => {
+                program_counter_action = ProgramCounterAction::Jump(nnn + self.v[0] as u16);
+            }
+
+            Instruction::CCXNN(x, nn) => {
+                self.v[x] = random::<u8>() & nn;
+            }
 
             Instruction::CDXYN(x, y, n) => {
                 let sprite = self.memory.read(self.i as usize, n as usize);
@@ -231,7 +253,7 @@ impl Cpu {
             Instruction::CEX9E(x) => {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
-                    KeyState::Down => self.pc += OPCODE_SIZE,
+                    KeyState::Down => program_counter_action = ProgramCounterAction::Skip,
                     _ => {}
                 }
             }
@@ -240,11 +262,13 @@ impl Cpu {
                 let vx = self.v[x] as usize;
                 match self.key_state[vx] {
                     KeyState::Down => {}
-                    _ => self.pc += OPCODE_SIZE,
+                    _ => program_counter_action = ProgramCounterAction::Skip,
                 }
             }
 
-            Instruction::CFX07(x) => self.v[x] = self.dt,
+            Instruction::CFX07(x) => {
+                self.v[x] = self.dt;
+            }
 
             Instruction::CFX0A(x) => {
                 match self
@@ -253,7 +277,7 @@ impl Cpu {
                     .position(|&state| state == KeyState::Up)
                 {
                     Some(key_index) => self.v[x] = key_index as u8,
-                    None => self.pc -= OPCODE_SIZE,
+                    None => program_counter_action = ProgramCounterAction::Repeat,
                 }
             }
 
@@ -267,7 +291,9 @@ impl Cpu {
                 self.sound_timer.start();
             }
 
-            Instruction::CFX1E(x) => self.i = self.i.wrapping_add(self.v[x] as u16),
+            Instruction::CFX1E(x) => {
+                self.i = self.i.wrapping_add(self.v[x] as u16);
+            }
 
             Instruction::CFX29(x) => {
                 let nibble = (self.v[x] & 0b1111) as usize;
@@ -296,39 +322,6 @@ impl Cpu {
             }
         }
 
-        if !has_jumped {
-            self.pc += OPCODE_SIZE;
-        }
-
-        self.reset_key_up_state();
-    }
-}
-
-impl fmt::Debug for Cpu {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("CPU")
-            .field("OPCODE", &format!("{:04X}", &self.opcode))
-            .field("PC", &format!("{:04X}", &self.pc))
-            .field("I", &format!("{:04X}", &self.i))
-            .field("SP", &format!("{:02X}", &self.sp))
-            .field("DT", &format!("{:02X}", &self.dt))
-            .field("ST", &format!("{:02X}", &self.st))
-            .field("V0", &format!("{:02X}", &self.v[0]))
-            .field("V1", &format!("{:02X}", &self.v[1]))
-            .field("V2", &format!("{:02X}", &self.v[2]))
-            .field("V3", &format!("{:02X}", &self.v[3]))
-            .field("V4", &format!("{:02X}", &self.v[4]))
-            .field("V5", &format!("{:02X}", &self.v[5]))
-            .field("V6", &format!("{:02X}", &self.v[6]))
-            .field("V7", &format!("{:02X}", &self.v[7]))
-            .field("V8", &format!("{:02X}", &self.v[8]))
-            .field("V9", &format!("{:02X}", &self.v[9]))
-            .field("VA", &format!("{:02X}", &self.v[10]))
-            .field("VB", &format!("{:02X}", &self.v[11]))
-            .field("VC", &format!("{:02X}", &self.v[12]))
-            .field("VD", &format!("{:02X}", &self.v[13]))
-            .field("VE", &format!("{:02X}", &self.v[14]))
-            .field("VF", &format!("{:02X}", &self.v[15]))
-            .finish()
+        program_counter_action
     }
 }
