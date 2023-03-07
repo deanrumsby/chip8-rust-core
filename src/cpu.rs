@@ -108,8 +108,8 @@ impl Cpu {
     }
 
     pub fn step(&mut self) {
-        let opcode = self.fetch();
         self.redraw = false;
+        let opcode = self.fetch();
         let instruction = Instruction::try_from(opcode).unwrap();
         
         match self.execute(instruction) {
@@ -121,6 +121,7 @@ impl Cpu {
 
         self.delay_timer.tick();
         self.sound_timer.tick();
+        self.reset_released_key_state();
     }
 
     fn fetch(&self) -> u16 {

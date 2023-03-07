@@ -1,13 +1,9 @@
 mod clock;
 mod cpu;
 mod font;
-pub mod keys;
-mod utils;
 
 use clock::Clock;
-use cpu::Cpu;
-use cpu::Pixel;
-use keys::{Key, KeyState};
+use cpu::{Cpu, Pixel, Key, KeyState};
 use std::fs;
 use std::path::Path;
 
@@ -38,7 +34,7 @@ impl Chip8 {
     }
 
     pub fn handle_key_event(&mut self, key: Key, state: KeyState) {
-        self.cpu.update_key_state(key, state);
+        self.cpu.update_key_pad(key, state);
     }
 
     pub fn reset(&mut self) {}
