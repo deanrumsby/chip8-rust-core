@@ -53,12 +53,13 @@ pub struct Cpu {
     ram: [u8; MEMORY_SIZE],
     pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
     key_pad: [KeyState; KEY_COUNT],
-    sound_timer: Timer,
-    delay_timer: Timer,
+    cycles_per_timer_decrement: f64,
+    sound_timer_cycle_count: u64,
+    delay_timer_cycle_count: u64,
 }
 
 impl Cpu {
-    pub fn new() -> Self {
+    pub fn new(cycles_per_timer_decrement: f64) -> Self {
         let mut cpu = Self {
             pc: PROGRAM_START_OFFSET,
             i: 0,
@@ -70,8 +71,9 @@ impl Cpu {
             ram: [0; MEMORY_SIZE],
             pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
             key_pad: [KeyState::None; KEY_COUNT],
-            sound_timer: Timer::new(),
-            delay_timer: Timer::new(),
+            cycles_per_timer_decrement,
+            sound_timer_cycle_count: 0,
+            delay_timer_cycle_count: 0,
         };
 
         cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
@@ -82,6 +84,10 @@ impl Cpu {
     pub fn load_into_memory(&mut self, offset: usize, bytes: &[u8]) {
         let range = offset..offset + bytes.len();
         self.ram[range].copy_from_slice(bytes);
+    }
+
+    pub fn set_cycles_per_timer_decrement(&mut self, cycles_per_timer_decrement: f64) {
+        self.cycles_per_timer_decrement = cycles_per_timer_decrement;
     }
 
     fn read_from_memory(&self, offset: usize, size: usize) -> &[u8] {
