@@ -1,13 +1,14 @@
 use std::env;
 use std::path::Path;
 use std::time::Duration;
+use std::collections::HashMap;
 
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
 use chip8_core_rs::Chip8;
-use chip8_core_rs::cpu::{Pixel, PIXELS_WIDTH, PIXELS_HEIGHT};
+use chip8_core_rs::cpu::{Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -19,7 +20,6 @@ pub fn main() {
         .unwrap();
 
     let mut canvas = window.into_canvas()
-        .present_vsync()
         .build()
         .unwrap();
 
@@ -31,9 +31,28 @@ pub fn main() {
 
     let mut chip8 = Chip8::new();
     chip8.load(Path::new(&env::args().nth(1).unwrap()));
-    
+
     chip8.clock.start();
     let mut frame_start = std::time::Instant::now();
+
+    let key_map = HashMap::from([
+        (Keycode::Num1, Key::Key(0x1)),
+        (Keycode::Num2, Key::Key(0x2)),
+        (Keycode::Num3, Key::Key(0x3)),
+        (Keycode::Num4, Key::Key(0xC)),
+        (Keycode::Q, Key::Key(0x4)),
+        (Keycode::W, Key::Key(0x5)),
+        (Keycode::E, Key::Key(0x6)),
+        (Keycode::R, Key::Key(0xD)),
+        (Keycode::A, Key::Key(0x7)),
+        (Keycode::S, Key::Key(0x8)),
+        (Keycode::D, Key::Key(0x9)),
+        (Keycode::F, Key::Key(0xE)),
+        (Keycode::Z, Key::Key(0xA)),
+        (Keycode::X, Key::Key(0x0)),
+        (Keycode::C, Key::Key(0xB)),
+        (Keycode::V, Key::Key(0xF)),
+    ]);
 
     'running: loop {
 
@@ -43,13 +62,15 @@ pub fn main() {
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                     break 'running
                 },
-                _ => {}
+                Event::KeyDown { keycode: Some(code), .. } => chip8.handle_key_event(key_map[&code], KeyState::Pressed),
+                Event::KeyUp { keycode: Some(code), .. } => chip8.handle_key_event(key_map[&code], KeyState::Released),
+                _ => {},
             }
         }
 
         chip8.step();
 
-        if frame_start.elapsed() > Duration::from_millis(1000 / 150) {
+        if frame_start.elapsed() > Duration::from_millis(1000 / 200) {
             canvas.set_draw_color(Color::RGB(0, 0, 0));
             canvas.clear();
     
@@ -66,9 +87,7 @@ pub fn main() {
             canvas.present();
             frame_start = std::time::Instant::now();
         }
-        // The rest of the game loop goes here...
 
-        // ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         chip8.clock.tick();
     }
 }
