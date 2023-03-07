@@ -24,7 +24,7 @@ impl Chip8 {
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
-        self.cpu.set_cycles_per_timer_decrement(instructions_per_second as f64 / TIMER_FREQUENCY);
+        self.cpu.set_timer_speed(instructions_per_second as f64 / TIMER_FREQUENCY);
         self.clock.set_speed(instructions_per_second);
     }
 

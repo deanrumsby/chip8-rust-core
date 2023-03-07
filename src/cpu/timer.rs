@@ -1,45 +1,44 @@
-const CYCLES_PER_DECREMENT: f32 = 700.0 / 60.0;
-const CYCLES_PER_SECOND: f32 = 700.0;
 
 pub struct Timer {
     is_active: bool,
-    cycle_count: f32,
-    decrement_count: f32,
+    cycles_per_decrement: f64,
+    cycle_count: u64,
+    decrement_count: u64,
     pub should_decrease: bool,
 }
 
 impl Timer {
-    pub fn new() -> Self {
+    pub fn new(cycles_per_decrement: f64) -> Self {
         Self {
             is_active: false,
-            cycle_count: 0.0,
-            decrement_count: 0.0,
+            cycles_per_decrement,
+            cycle_count: 0,
+            decrement_count: 0,
             should_decrease: false,
         }
     }
 
     pub fn start(&mut self) {
-        self.cycle_count = 0.0;
-        self.decrement_count = 0.0;
+        self.cycle_count = 0;
+        self.decrement_count = 0;
         self.is_active = true;
         self.should_decrease = false;
     }
 
-    pub fn tick(&mut self) {
-        self.should_decrease = false;
+    pub fn set_speed(&mut self, cycles_per_decrement: f64) {
+        self.cycles_per_decrement = cycles_per_decrement;
+    }
 
+    pub fn tick(&mut self) {
         if !self.is_active {
             return;
         }
-        self.cycle_count += 1.0;
-        let count_threshold = CYCLES_PER_DECREMENT * (self.decrement_count + 1.0);
-        if self.cycle_count >= count_threshold {
-            self.decrement_count += 1.0;
+        self.should_decrease = false;
+        self.cycle_count += 1;
+        let count_threshold = self.cycles_per_decrement * (self.decrement_count + 1) as f64;
+        if self.cycle_count as f64 >= count_threshold {
+            self.decrement_count += 1;
             self.should_decrease = true;
-        }
-        if self.cycle_count == CYCLES_PER_SECOND {
-            self.cycle_count = 0.0;
-            self.decrement_count = 0.0;
         }
     }
 

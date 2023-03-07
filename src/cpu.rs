@@ -2,9 +2,9 @@ mod instructions;
 mod timer;
 
 use crate::font::{FONT, FONT_CHAR_SIZE};
+use timer::Timer;
 use instructions::Instruction;
 use rand::random;
-use timer::Timer;
 
 pub const PIXELS_WIDTH: usize = 64;
 pub const PIXELS_HEIGHT: usize = 32;
@@ -53,9 +53,8 @@ pub struct Cpu {
     ram: [u8; MEMORY_SIZE],
     pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
     key_pad: [KeyState; KEY_COUNT],
-    cycles_per_timer_decrement: f64,
-    sound_timer_cycle_count: u64,
-    delay_timer_cycle_count: u64,
+    sound_timer: Timer,
+    delay_timer: Timer,
 }
 
 impl Cpu {
@@ -71,9 +70,8 @@ impl Cpu {
             ram: [0; MEMORY_SIZE],
             pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
             key_pad: [KeyState::None; KEY_COUNT],
-            cycles_per_timer_decrement,
-            sound_timer_cycle_count: 0,
-            delay_timer_cycle_count: 0,
+            sound_timer: Timer::new(cycles_per_timer_decrement),
+            delay_timer: Timer::new(cycles_per_timer_decrement),
         };
 
         cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
@@ -86,8 +84,9 @@ impl Cpu {
         self.ram[range].copy_from_slice(bytes);
     }
 
-    pub fn set_cycles_per_timer_decrement(&mut self, cycles_per_timer_decrement: f64) {
-        self.cycles_per_timer_decrement = cycles_per_timer_decrement;
+    pub fn set_timer_speed(&mut self, cycles_per_decrement: f64) {
+        self.sound_timer.set_speed(cycles_per_decrement);
+        self.delay_timer.set_speed(cycles_per_decrement);
     }
 
     fn read_from_memory(&self, offset: usize, size: usize) -> &[u8] {
@@ -112,6 +111,24 @@ impl Cpu {
         })
     }
 
+    fn update_timers(&mut self) {
+        self.delay_timer.tick();
+        self.sound_timer.tick();
+
+        if self.delay_timer.should_decrease && self.dt > 0 {
+            self.dt -= 1;
+        }
+        if self.sound_timer.should_decrease && self.st > 0 {
+            self.st -= 1;
+        }
+        if self.dt == 0 {
+            self.delay_timer.stop();
+        }
+        if self.st == 0 {
+            self.sound_timer.stop();
+        }
+    }
+
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction = Instruction::try_from(opcode).unwrap();
@@ -123,8 +140,7 @@ impl Cpu {
             ProgramCounterStatus::Jump(address) => self.pc = address,
         }
 
-        self.delay_timer.tick();
-        self.sound_timer.tick();
+        self.update_timers();
         self.reset_released_key_state();
     }
 
@@ -138,20 +154,6 @@ impl Cpu {
     fn execute(&mut self, instruction: Instruction) -> ProgramCounterStatus {
         let mut program_counter_status = ProgramCounterStatus::Next;
         
-        if self.sound_timer.should_decrease && self.st > 0 {
-            self.st -= 1;
-            if self.st == 0 {
-                self.sound_timer.stop();
-            }
-        }
-
-        if self.delay_timer.should_decrease && self.dt > 0 {
-            self.dt -= 1;
-            if self.dt == 0 {
-                self.delay_timer.stop();
-            }
-        }
-
         match instruction {
             Instruction::OpCode00E0 => {
                 self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
