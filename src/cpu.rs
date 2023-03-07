@@ -2,7 +2,6 @@ mod instructions;
 mod timer;
 
 use crate::font::{FONT, FONT_CHAR_SIZE};
-use crate::keys::{Key, KeyState};
 use instructions::Instruction;
 use rand::random;
 use timer::Timer;
@@ -30,6 +29,18 @@ pub enum Pixel {
     Off,
 }
 
+#[derive(Clone, Copy)]
+pub enum Key {
+    Key(usize),
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum KeyState {
+    Released,
+    Pressed,
+    None,
+}
+
 pub struct Cpu {
     pc: u16,
     i: u16,
@@ -40,7 +51,7 @@ pub struct Cpu {
     stack: [u16; STACK_SIZE],
     ram: [u8; MEMORY_SIZE],
     pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
-    key_state: [KeyState; KEY_COUNT],
+    key_pad: [KeyState; KEY_COUNT],
     sound_timer: Timer,
     delay_timer: Timer,
     pub redraw: bool,
@@ -48,7 +59,7 @@ pub struct Cpu {
 
 impl Cpu {
     pub fn new() -> Self {
-        let mut interpreter = Self {
+        let mut cpu = Self {
             pc: PROGRAM_START_OFFSET,
             i: 0,
             sp: 0,
@@ -58,15 +69,15 @@ impl Cpu {
             stack: [0; STACK_SIZE],
             ram: [0; MEMORY_SIZE],
             pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
-            key_state: [KeyState::None; KEY_COUNT],
+            key_pad: [KeyState::None; KEY_COUNT],
             sound_timer: Timer::new(),
             delay_timer: Timer::new(),
             redraw: false,
         };
 
-        interpreter.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
+        cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
 
-        interpreter
+        cpu
     }
 
     pub fn load_into_memory(&mut self, offset: usize, bytes: &[u8]) {
@@ -82,15 +93,16 @@ impl Cpu {
         &self.pixels
     }
 
-    pub fn update_key_state(&mut self, key: Key, state: KeyState) {
+    pub fn update_key_pad(&mut self, key: Key, state: KeyState) {
         match key {
-            Key::Key(index) => self.key_state[index] = state,
+            Key::Key(key_index) if key_index < KEY_COUNT => self.key_pad[key_index] = state,
+            Key::Key(_) => (),
         }
     }
 
-    fn reset_key_up_state(&mut self) {
-        self.key_state = self.key_state.map(|state| match state {
-            KeyState::Up => KeyState::None,
+    fn reset_released_key_state(&mut self) {
+        self.key_pad = self.key_pad.map(|state| match state {
+            KeyState::Released => KeyState::None,
             other => other,
         })
     }
@@ -292,16 +304,16 @@ impl Cpu {
 
             Instruction::OpCodeEX9E(x) => {
                 let vx = self.v[x] as usize;
-                match self.key_state[vx] {
-                    KeyState::Down => program_counter_status = ProgramCounterStatus::Skip,
+                match self.key_pad[vx] {
+                    KeyState::Pressed => program_counter_status = ProgramCounterStatus::Skip,
                     _ => {}
                 }
             }
 
             Instruction::OpCodeEXA1(x) => {
                 let vx = self.v[x] as usize;
-                match self.key_state[vx] {
-                    KeyState::Down => {}
+                match self.key_pad[vx] {
+                    KeyState::Pressed => {}
                     _ => program_counter_status = ProgramCounterStatus::Skip,
                 }
             }
@@ -312,9 +324,9 @@ impl Cpu {
 
             Instruction::OpCodeFX0A(x) => {
                 match self
-                    .key_state
+                    .key_pad
                     .iter()
-                    .position(|&state| state == KeyState::Up)
+                    .position(|&state| state == KeyState::Released)
                 {
                     Some(key_index) => self.v[x] = key_index as u8,
                     None => program_counter_status = ProgramCounterStatus::Repeat,
