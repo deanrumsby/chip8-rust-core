@@ -2,7 +2,6 @@ mod instructions;
 mod timer;
 
 use crate::font::{FONT, FONT_CHAR_SIZE};
-use crate::frame::Frame;
 use crate::keys::{Key, KeyState};
 use instructions::Instruction;
 use rand::random;
@@ -15,12 +14,20 @@ const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const MEMORY_SIZE: usize = 4096;
+const PIXELS_WIDTH: usize = 64;
+const PIXELS_HEIGHT: usize = 32;
 
 enum ProgramCounterStatus {
     Repeat,
     Next,
     Skip,
     Jump(u16),
+}
+
+#[derive(Clone, Copy)]
+pub enum Pixel {
+    On,
+    Off,
 }
 
 pub struct Cpu {
@@ -32,10 +39,10 @@ pub struct Cpu {
     v: [u8; V_REG_COUNT],
     stack: [u16; STACK_SIZE],
     ram: [u8; MEMORY_SIZE],
+    pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
     key_state: [KeyState; KEY_COUNT],
     sound_timer: Timer,
     delay_timer: Timer,
-    pub frame: Frame,
     pub redraw: bool,
 }
 
@@ -50,10 +57,10 @@ impl Cpu {
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
             ram: [0; MEMORY_SIZE],
+            pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
             key_state: [KeyState::None; KEY_COUNT],
             sound_timer: Timer::new(),
             delay_timer: Timer::new(),
-            frame: Frame::new(),
             redraw: false,
         };
 
@@ -69,6 +76,10 @@ impl Cpu {
 
     fn read_from_memory(&self, offset: usize, size: usize) -> &[u8] {
         &self.ram[offset..offset + size]
+    }
+
+    pub fn pixels(&self) -> &[Pixel] {
+        &self.pixels
     }
 
     pub fn update_key_state(&mut self, key: Key, state: KeyState) {
@@ -126,7 +137,7 @@ impl Cpu {
 
         match instruction {
             Instruction::OpCode00E0 => {
-                self.frame.clear();
+                self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
                 self.redraw = true;
             }
 
@@ -248,14 +259,33 @@ impl Cpu {
             }
 
             Instruction::OpCodeDXYN(x, y, n) => {
-                let sprite = &self.ram[self.i as usize..self.i as usize + n as usize];
-                let vx = self.v[x] as usize;
-                let vy = self.v[y] as usize;
-                let has_collision = self.frame.draw_sprite(sprite, (vx, vy));
-                if has_collision {
-                    self.v[0xf] = 1;
-                } else {
-                    self.v[0xf] = 0;
+                self.v[0xf] = 0;
+
+                let sprite = self.read_from_memory(self.i as usize, n as usize).to_owned();
+                let (start_x, start_y) = (self.v[x] as usize % PIXELS_WIDTH, self.v[y] as usize % PIXELS_HEIGHT);
+
+                for (i, byte) in sprite.iter().enumerate() {
+                    for j in 0..u8::BITS as usize {
+                        let x = start_x + j;
+                        let y = start_y + i;
+                        if x >= PIXELS_WIDTH || y >= PIXELS_HEIGHT {
+                            continue;
+                        }
+                        let offset = x + y * PIXELS_WIDTH;
+                        let bit = (byte >> (u8::BITS as usize - 1 - j)) & 0x1;
+                        let pixel = self.pixels[offset];
+                        if bit == 1 {
+                            match pixel {
+                                Pixel::On => {
+                                    self.pixels[offset] = Pixel::Off;
+                                    self.v[0xf] = 1;
+                                },
+                                Pixel::Off => {
+                                    self.pixels[offset] = Pixel::On;
+                                },
+                            }
+                        }
+                    }
                 }
                 self.redraw = true;
             }

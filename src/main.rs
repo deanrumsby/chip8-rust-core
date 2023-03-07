@@ -1,4 +1,3 @@
-use chip8_core_rs::frame::Pixel;
 use chip8_core_rs::keys::{Key, KeyState};
 use chip8_core_rs::Chip8;
 use pixels::{Pixels, SurfaceTexture};
