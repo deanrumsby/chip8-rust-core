@@ -6,6 +6,9 @@ use instructions::Instruction;
 use rand::random;
 use timer::Timer;
 
+pub const PIXELS_WIDTH: usize = 64;
+pub const PIXELS_HEIGHT: usize = 32;
+
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
 const KEY_COUNT: usize = 16;
@@ -13,8 +16,6 @@ const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const MEMORY_SIZE: usize = 4096;
-const PIXELS_WIDTH: usize = 64;
-const PIXELS_HEIGHT: usize = 32;
 
 enum ProgramCounterStatus {
     Repeat,
@@ -54,7 +55,6 @@ pub struct Cpu {
     key_pad: [KeyState; KEY_COUNT],
     sound_timer: Timer,
     delay_timer: Timer,
-    pub redraw: bool,
 }
 
 impl Cpu {
@@ -72,7 +72,6 @@ impl Cpu {
             key_pad: [KeyState::None; KEY_COUNT],
             sound_timer: Timer::new(),
             delay_timer: Timer::new(),
-            redraw: false,
         };
 
         cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
@@ -108,7 +107,6 @@ impl Cpu {
     }
 
     pub fn step(&mut self) {
-        self.redraw = false;
         let opcode = self.fetch();
         let instruction = Instruction::try_from(opcode).unwrap();
         
@@ -151,7 +149,6 @@ impl Cpu {
         match instruction {
             Instruction::OpCode00E0 => {
                 self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
-                self.redraw = true;
             }
 
             Instruction::OpCode00EE => {
@@ -275,8 +272,9 @@ impl Cpu {
                 self.v[0xf] = 0;
 
                 let sprite = self.read_from_memory(self.i as usize, n as usize).to_owned();
-                let (start_x, start_y) = (self.v[x] as usize % PIXELS_WIDTH, self.v[y] as usize % PIXELS_HEIGHT);
-
+                let start_x = self.v[x] as usize % PIXELS_WIDTH; 
+                let start_y = self.v[y] as usize % PIXELS_HEIGHT;
+                
                 for (i, byte) in sprite.iter().enumerate() {
                     for j in 0..u8::BITS as usize {
                         let x = start_x + j;
@@ -300,7 +298,6 @@ impl Cpu {
                         }
                     }
                 }
-                self.redraw = true;
             }
 
             Instruction::OpCodeEX9E(x) => {

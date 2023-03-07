@@ -1,5 +1,5 @@
 mod clock;
-mod cpu;
+pub mod cpu;
 mod font;
 
 use clock::Clock;
