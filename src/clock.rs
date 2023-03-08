@@ -25,6 +25,10 @@ impl Clock {
         self.cycle_count = 0;
     }
 
+    pub fn stop(&mut self) {
+        self.start_time = None;
+    }
+
     pub fn set_speed(&mut self, instructions_per_second: u64) {
         self.instructions_per_second = instructions_per_second;
     }

@@ -29,6 +29,14 @@ impl Timer {
         self.cycles_per_decrement = cycles_per_decrement;
     }
 
+    pub fn decrease_by(&self) -> u8 {
+        if self.should_decrease {
+            return (1.0 / self.cycles_per_decrement).ceil() as u8;
+        } else {
+            return 0;
+        }
+    }
+
     pub fn tick(&mut self) {
         if !self.is_active {
             return;

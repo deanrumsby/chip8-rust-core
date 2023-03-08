@@ -7,8 +7,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
-use chip8_core_rs::Chip8;
-use chip8_core_rs::cpu::{Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
+use chip8_core_rs::{Chip8, Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -32,7 +31,7 @@ pub fn main() {
     let mut chip8 = Chip8::new();
     chip8.load(Path::new(&env::args().nth(1).unwrap()));
 
-    chip8.clock.start();
+    chip8.start();
     let mut frame_start = std::time::Instant::now();
 
     let key_map = HashMap::from([
@@ -88,6 +87,6 @@ pub fn main() {
             frame_start = std::time::Instant::now();
         }
 
-        chip8.clock.tick();
+        chip8.tick();
     }
 }

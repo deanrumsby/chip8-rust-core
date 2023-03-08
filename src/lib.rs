@@ -1,18 +1,19 @@
 mod clock;
-pub mod cpu;
-mod font;
+mod cpu;
 
-use clock::Clock;
-use cpu::{Cpu, Pixel, Key, KeyState};
 use std::fs;
 use std::path::Path;
+
+pub use cpu::{Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
+use clock::Clock;
+use cpu::Cpu;
 
 const DEFAULT_SPEED: u64 = 700;
 const TIMER_FREQUENCY: f64 = 60.0;
 
 pub struct Chip8 {
-    pub cpu: Cpu,
-    pub clock: Clock,
+    cpu: Cpu,
+    clock: Clock,
 }
 
 impl Chip8 {
@@ -21,6 +22,18 @@ impl Chip8 {
             cpu: Cpu::new(DEFAULT_SPEED as f64 / TIMER_FREQUENCY),
             clock: Clock::new(DEFAULT_SPEED),
         }
+    }
+
+    pub fn start(&mut self) {
+        self.clock.start();
+    }
+
+    pub fn stop(&mut self) {
+        self.clock.stop();
+    }
+
+    pub fn tick(&mut self) {
+        self.clock.tick();
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
@@ -45,5 +58,8 @@ impl Chip8 {
         self.cpu.update_key_pad(key, state);
     }
 
-    pub fn reset(&mut self) {}
+    pub fn reset(&mut self) {
+        self.cpu.reset();
+        self.stop();
+    }
 }

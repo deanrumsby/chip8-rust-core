@@ -1,7 +1,8 @@
 mod instructions;
 mod timer;
+mod font;
 
-use crate::font::{FONT, FONT_CHAR_SIZE};
+use font::{FONT, FONT_CHAR_SIZE};
 use timer::Timer;
 use instructions::Instruction;
 use rand::random;
@@ -79,6 +80,24 @@ impl Cpu {
         cpu
     }
 
+    pub fn reset(&mut self) {
+        self.pc = PROGRAM_START_OFFSET;
+        self.i = 0;
+        self.sp = 0;
+        self.dt = 0;
+        self.st = 0;
+        self.v = [0; V_REG_COUNT];
+        self.stack = [0; STACK_SIZE];
+        self.ram = [0; MEMORY_SIZE];
+        self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
+        self.key_pad = [KeyState::None; KEY_COUNT];
+
+        self.delay_timer.stop();
+        self.sound_timer.stop();
+
+        self.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
+    }
+
     pub fn load_into_memory(&mut self, offset: usize, bytes: &[u8]) {
         let range = offset..offset + bytes.len();
         self.ram[range].copy_from_slice(bytes);
@@ -115,12 +134,9 @@ impl Cpu {
         self.delay_timer.tick();
         self.sound_timer.tick();
 
-        if self.delay_timer.should_decrease && self.dt > 0 {
-            self.dt -= 1;
-        }
-        if self.sound_timer.should_decrease && self.st > 0 {
-            self.st -= 1;
-        }
+        self.dt = self.dt.saturating_sub(self.delay_timer.decrease_by()); 
+        self.st = self.st.saturating_sub(self.sound_timer.decrease_by());
+        
         if self.dt == 0 {
             self.delay_timer.stop();
         }
