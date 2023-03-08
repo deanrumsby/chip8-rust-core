@@ -31,8 +31,9 @@ pub fn main() {
     let mut chip8 = Chip8::new();
     chip8.load(Path::new(&env::args().nth(1).unwrap()));
 
-    chip8.start();
-    let mut frame_start = std::time::Instant::now();
+    if env::args().nth(2).is_some() {
+        chip8.set_speed(env::args().nth(2).unwrap().parse::<u64>().unwrap());
+    }
 
     let key_map = HashMap::from([
         (Keycode::Num1, Key::Key(0x1)),
@@ -51,9 +52,12 @@ pub fn main() {
         (Keycode::X, Key::Key(0x0)),
         (Keycode::C, Key::Key(0xB)),
         (Keycode::V, Key::Key(0xF)),
-    ]);
+        ]);
 
-    'running: loop {
+        chip8.start();
+        let mut frame_start = std::time::Instant::now();
+        
+        'running: loop {
 
         for event in event_pump.poll_iter() {
             match event {

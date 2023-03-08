@@ -31,6 +31,7 @@ impl Clock {
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
         self.instructions_per_second = instructions_per_second;
+        self.time_per_instruction_microseconds = ONE_SECOND_IN_MICROSECONDS / instructions_per_second;
     }
 
     pub fn tick(&mut self) {
