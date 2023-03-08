@@ -31,9 +31,9 @@ impl Timer {
 
     pub fn decrease_by(&self) -> u8 {
         if self.should_decrease {
-            return (1.0 / self.cycles_per_decrement).ceil() as u8;
+            (1.0 / self.cycles_per_decrement).ceil() as u8
         } else {
-            return 0;
+            0
         }
     }
 

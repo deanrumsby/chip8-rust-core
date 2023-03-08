@@ -326,9 +326,8 @@ impl Cpu {
 
             Instruction::OpCodeEX9E(x) => {
                 let vx = self.v[x] as usize;
-                match self.key_pad[vx] {
-                    KeyState::Pressed => program_counter_status = ProgramCounterStatus::Skip,
-                    _ => {}
+                if self.key_pad[vx] == KeyState::Pressed {
+                    program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 

@@ -243,7 +243,7 @@ impl TryFrom<u16> for Instruction {
         let op_type = ((opcode & 0xf000) >> 12) as usize;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
-        let nnn = (opcode & 0x0fff) as u16;
+        let nnn = (opcode & 0x0fff);
         let nn = (opcode & 0x00ff) as u8;
         let n = (opcode & 0x000f) as u8;
 
