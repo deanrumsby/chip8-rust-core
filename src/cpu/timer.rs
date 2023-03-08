@@ -4,7 +4,7 @@ pub struct Timer {
     cycles_per_decrement: f64,
     cycle_count: u64,
     decrement_count: u64,
-    pub should_decrease: bool,
+    should_decrease: bool,
 }
 
 impl Timer {
