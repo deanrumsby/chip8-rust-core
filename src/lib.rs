@@ -1,6 +1,7 @@
 mod clock;
 mod cpu;
 mod keypad;
+mod font;
 
 use std::fs;
 use std::path::Path;

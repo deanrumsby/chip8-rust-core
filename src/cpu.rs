@@ -1,12 +1,12 @@
 mod instructions;
 mod timer;
-mod font;
+
+use rand::random;
 
 use crate::keypad::{KeyPad, Key, KeyState};
-use font::{FONT, FONT_CHAR_SIZE};
+use crate::font::{FONT, FONT_CHAR_SIZE};
 use timer::Timer;
 use instructions::Instruction;
-use rand::random;
 
 pub const PIXELS_WIDTH: usize = 64;
 pub const PIXELS_HEIGHT: usize = 32;
@@ -64,7 +64,7 @@ impl Cpu {
         };
 
         cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
-
+        
         cpu
     }
 
@@ -120,7 +120,7 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
-        let instruction = Instruction::from(opcode);
+        let instruction: Instruction = opcode.into();
         
         match self.execute(instruction) {
             ProgramCounterStatus::Repeat => (),

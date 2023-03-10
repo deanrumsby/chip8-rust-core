@@ -9,7 +9,7 @@ use sdl2::keyboard::Keycode;
 
 use chip8_core::{Chip8, Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
 
-pub fn main() {
+fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
