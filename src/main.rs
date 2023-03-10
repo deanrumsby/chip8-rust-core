@@ -7,7 +7,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 
-use chip8_core_rs::{Chip8, Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
+use chip8_core::{Chip8, Pixel, Key, KeyState, PIXELS_WIDTH, PIXELS_HEIGHT};
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -36,22 +36,22 @@ pub fn main() {
     }
 
     let key_map = HashMap::from([
-        (Keycode::Num1, Key::Key(0x1)),
-        (Keycode::Num2, Key::Key(0x2)),
-        (Keycode::Num3, Key::Key(0x3)),
-        (Keycode::Num4, Key::Key(0xC)),
-        (Keycode::Q, Key::Key(0x4)),
-        (Keycode::W, Key::Key(0x5)),
-        (Keycode::E, Key::Key(0x6)),
-        (Keycode::R, Key::Key(0xD)),
-        (Keycode::A, Key::Key(0x7)),
-        (Keycode::S, Key::Key(0x8)),
-        (Keycode::D, Key::Key(0x9)),
-        (Keycode::F, Key::Key(0xE)),
-        (Keycode::Z, Key::Key(0xA)),
-        (Keycode::X, Key::Key(0x0)),
-        (Keycode::C, Key::Key(0xB)),
-        (Keycode::V, Key::Key(0xF)),
+        (Keycode::Num1, Key::Key1),
+        (Keycode::Num2, Key::Key2),
+        (Keycode::Num3, Key::Key3),
+        (Keycode::Num4, Key::KeyC),
+        (Keycode::Q, Key::Key4),
+        (Keycode::W, Key::Key5),
+        (Keycode::E, Key::Key6),
+        (Keycode::R, Key::KeyD),
+        (Keycode::A, Key::Key7),
+        (Keycode::S, Key::Key8),
+        (Keycode::D, Key::Key9),
+        (Keycode::F, Key::KeyE),
+        (Keycode::Z, Key::KeyA),
+        (Keycode::X, Key::Key0),
+        (Keycode::C, Key::KeyB),
+        (Keycode::V, Key::KeyF),
         ]);
 
         chip8.start();

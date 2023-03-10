@@ -236,53 +236,51 @@ pub enum Instruction {
     OpCodeFX65(usize),
 }
 
-impl TryFrom<u16> for Instruction {
-    type Error = &'static str;
-
-    fn try_from(opcode: u16) -> Result<Self, Self::Error> {
+impl From<u16> for Instruction {
+    fn from(opcode: u16) -> Self {
         let op_type = ((opcode & 0xf000) >> 12) as usize;
         let x = ((opcode & 0x0f00) >> 8) as usize;
         let y = ((opcode & 0x00f0) >> 4) as usize;
-        let nnn = (opcode & 0x0fff);
+        let nnn = opcode & 0x0fff;
         let nn = (opcode & 0x00ff) as u8;
         let n = (opcode & 0x000f) as u8;
 
         match (op_type, x, y, n) {
-            (0x0, 0x0, 0xe, 0x0) => Ok(Instruction::OpCode00E0),
-            (0x0, 0x0, 0xe, 0xe) => Ok(Instruction::OpCode00EE),
-            (0x1, _, _, _) => Ok(Instruction::OpCode1NNN(nnn)),
-            (0x2, _, _, _) => Ok(Instruction::OpCode2NNN(nnn)),
-            (0x3, _, _, _) => Ok(Instruction::OpCode3XNN(x, nn)),
-            (0x4, _, _, _) => Ok(Instruction::OpCode4XNN(x, nn)),
-            (0x5, _, _, 0x0) => Ok(Instruction::OpCode5XY0(x, y)),
-            (0x6, _, _, _) => Ok(Instruction::OpCode6XNN(x, nn)),
-            (0x7, _, _, _) => Ok(Instruction::OpCode7XNN(x, nn)),
-            (0x8, _, _, 0x0) => Ok(Instruction::OpCode8XY0(x, y)),
-            (0x8, _, _, 0x1) => Ok(Instruction::OpCode8XY1(x, y)),
-            (0x8, _, _, 0x2) => Ok(Instruction::OpCode8XY2(x, y)),
-            (0x8, _, _, 0x3) => Ok(Instruction::OpCode8XY3(x, y)),
-            (0x8, _, _, 0x4) => Ok(Instruction::OpCode8XY4(x, y)),
-            (0x8, _, _, 0x5) => Ok(Instruction::OpCode8XY5(x, y)),
-            (0x8, _, _, 0x6) => Ok(Instruction::OpCode8XY6(x, y)),
-            (0x8, _, _, 0x7) => Ok(Instruction::OpCode8XY7(x, y)),
-            (0x8, _, _, 0xe) => Ok(Instruction::OpCode8XYE(x, y)),
-            (0x9, _, _, 0x0) => Ok(Instruction::OpCode9XY0(x, y)),
-            (0xa, _, _, _) => Ok(Instruction::OpCodeANNN(nnn)),
-            (0xb, _, _, _) => Ok(Instruction::OpCodeBNNN(nnn)),
-            (0xc, _, _, _) => Ok(Instruction::OpCodeCXNN(x, nn)),
-            (0xd, _, _, _) => Ok(Instruction::OpCodeDXYN(x, y, n)),
-            (0xe, _, 0x9, 0xe) => Ok(Instruction::OpCodeEX9E(x)),
-            (0xe, _, 0xa, 0x1) => Ok(Instruction::OpCodeEXA1(x)),
-            (0xf, _, 0x0, 0x7) => Ok(Instruction::OpCodeFX07(x)),
-            (0xf, _, 0x0, 0xa) => Ok(Instruction::OpCodeFX0A(x)),
-            (0xf, _, 0x1, 0x5) => Ok(Instruction::OpCodeFX15(x)),
-            (0xf, _, 0x1, 0x8) => Ok(Instruction::OpCodeFX18(x)),
-            (0xf, _, 0x1, 0xe) => Ok(Instruction::OpCodeFX1E(x)),
-            (0xf, _, 0x2, 0x9) => Ok(Instruction::OpCodeFX29(x)),
-            (0xf, _, 0x3, 0x3) => Ok(Instruction::OpCodeFX33(x)),
-            (0xf, _, 0x5, 0x5) => Ok(Instruction::OpCodeFX55(x)),
-            (0xf, _, 0x6, 0x5) => Ok(Instruction::OpCodeFX65(x)),
-            _ => Err("Invalid opcode"),
+            (0x0, 0x0, 0xe, 0x0) => Instruction::OpCode00E0,
+            (0x0, 0x0, 0xe, 0xe) => Instruction::OpCode00EE,
+            (0x1, _, _, _) => Instruction::OpCode1NNN(nnn),
+            (0x2, _, _, _) => Instruction::OpCode2NNN(nnn),
+            (0x3, _, _, _) => Instruction::OpCode3XNN(x, nn),
+            (0x4, _, _, _) => Instruction::OpCode4XNN(x, nn),
+            (0x5, _, _, 0x0) => Instruction::OpCode5XY0(x, y),
+            (0x6, _, _, _) => Instruction::OpCode6XNN(x, nn),
+            (0x7, _, _, _) => Instruction::OpCode7XNN(x, nn),
+            (0x8, _, _, 0x0) => Instruction::OpCode8XY0(x, y),
+            (0x8, _, _, 0x1) => Instruction::OpCode8XY1(x, y),
+            (0x8, _, _, 0x2) => Instruction::OpCode8XY2(x, y),
+            (0x8, _, _, 0x3) => Instruction::OpCode8XY3(x, y),
+            (0x8, _, _, 0x4) => Instruction::OpCode8XY4(x, y),
+            (0x8, _, _, 0x5) => Instruction::OpCode8XY5(x, y),
+            (0x8, _, _, 0x6) => Instruction::OpCode8XY6(x, y),
+            (0x8, _, _, 0x7) => Instruction::OpCode8XY7(x, y),
+            (0x8, _, _, 0xe) => Instruction::OpCode8XYE(x, y),
+            (0x9, _, _, 0x0) => Instruction::OpCode9XY0(x, y),
+            (0xa, _, _, _) => Instruction::OpCodeANNN(nnn),
+            (0xb, _, _, _) => Instruction::OpCodeBNNN(nnn),
+            (0xc, _, _, _) => Instruction::OpCodeCXNN(x, nn),
+            (0xd, _, _, _) => Instruction::OpCodeDXYN(x, y, n),
+            (0xe, _, 0x9, 0xe) => Instruction::OpCodeEX9E(x),
+            (0xe, _, 0xa, 0x1) => Instruction::OpCodeEXA1(x),
+            (0xf, _, 0x0, 0x7) => Instruction::OpCodeFX07(x),
+            (0xf, _, 0x0, 0xa) => Instruction::OpCodeFX0A(x),
+            (0xf, _, 0x1, 0x5) => Instruction::OpCodeFX15(x),
+            (0xf, _, 0x1, 0x8) => Instruction::OpCodeFX18(x),
+            (0xf, _, 0x1, 0xe) => Instruction::OpCodeFX1E(x),
+            (0xf, _, 0x2, 0x9) => Instruction::OpCodeFX29(x),
+            (0xf, _, 0x3, 0x3) => Instruction::OpCodeFX33(x),
+            (0xf, _, 0x5, 0x5) => Instruction::OpCodeFX55(x),
+            (0xf, _, 0x6, 0x5) => Instruction::OpCodeFX65(x),
+            _ => panic!("Invalid opcode: {:x}", opcode),
         }
     }
 }

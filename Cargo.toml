@@ -1,5 +1,5 @@
 [package]
-name = "chip8-core-rs"
+name = "chip8_core"
 version = "0.1.0"
 edition = "2021"
 

@@ -2,6 +2,7 @@ mod instructions;
 mod timer;
 mod font;
 
+use crate::keypad::{KeyPad, Key, KeyState};
 use font::{FONT, FONT_CHAR_SIZE};
 use timer::Timer;
 use instructions::Instruction;
@@ -12,7 +13,6 @@ pub const PIXELS_HEIGHT: usize = 32;
 
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
-const KEY_COUNT: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
@@ -31,18 +31,6 @@ pub enum Pixel {
     Off,
 }
 
-#[derive(Clone, Copy)]
-pub enum Key {
-    Key(usize),
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub enum KeyState {
-    Released,
-    Pressed,
-    None,
-}
-
 pub struct Cpu {
     pc: u16,
     i: u16,
@@ -53,7 +41,7 @@ pub struct Cpu {
     stack: [u16; STACK_SIZE],
     ram: [u8; MEMORY_SIZE],
     pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
-    key_pad: [KeyState; KEY_COUNT],
+    pub key_pad: KeyPad,
     sound_timer: Timer,
     delay_timer: Timer,
 }
@@ -70,7 +58,7 @@ impl Cpu {
             stack: [0; STACK_SIZE],
             ram: [0; MEMORY_SIZE],
             pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
-            key_pad: [KeyState::None; KEY_COUNT],
+            key_pad: KeyPad::new(),
             sound_timer: Timer::new(cycles_per_timer_decrement),
             delay_timer: Timer::new(cycles_per_timer_decrement),
         };
@@ -90,7 +78,6 @@ impl Cpu {
         self.stack = [0; STACK_SIZE];
         self.ram = [0; MEMORY_SIZE];
         self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
-        self.key_pad = [KeyState::None; KEY_COUNT];
 
         self.delay_timer.stop();
         self.sound_timer.stop();
@@ -116,20 +103,6 @@ impl Cpu {
         &self.pixels
     }
 
-    pub fn update_key_pad(&mut self, key: Key, state: KeyState) {
-        match key {
-            Key::Key(key_index) if key_index < KEY_COUNT => self.key_pad[key_index] = state,
-            Key::Key(_) => (),
-        }
-    }
-
-    fn reset_released_key_state(&mut self) {
-        self.key_pad = self.key_pad.map(|state| match state {
-            KeyState::Released => KeyState::None,
-            other => other,
-        })
-    }
-
     fn update_timers(&mut self) {
         self.delay_timer.tick();
         self.sound_timer.tick();
@@ -147,7 +120,7 @@ impl Cpu {
 
     pub fn step(&mut self) {
         let opcode = self.fetch();
-        let instruction = Instruction::try_from(opcode).unwrap();
+        let instruction = Instruction::from(opcode);
         
         match self.execute(instruction) {
             ProgramCounterStatus::Repeat => (),
@@ -157,7 +130,7 @@ impl Cpu {
         }
 
         self.update_timers();
-        self.reset_released_key_state();
+        self.key_pad.reset_released_key_state();
     }
 
     fn fetch(&self) -> u16 {
@@ -325,15 +298,15 @@ impl Cpu {
             }
 
             Instruction::OpCodeEX9E(x) => {
-                let vx = self.v[x] as usize;
-                if self.key_pad[vx] == KeyState::Pressed {
+                let key: Key = self.v[x].into();
+                if self.key_pad[key] == KeyState::Pressed {
                     program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
             Instruction::OpCodeEXA1(x) => {
-                let vx = self.v[x] as usize;
-                match self.key_pad[vx] {
+                let key: Key = self.v[x].into();
+                match self.key_pad[key] {
                     KeyState::Pressed => {}
                     _ => program_counter_status = ProgramCounterStatus::Skip,
                 }
@@ -344,12 +317,9 @@ impl Cpu {
             }
 
             Instruction::OpCodeFX0A(x) => {
-                match self
-                    .key_pad
-                    .iter()
-                    .position(|&state| state == KeyState::Released)
-                {
-                    Some(key_index) => self.v[x] = key_index as u8,
+                let key = self.key_pad.find_released_key();
+                match key {
+                    Some(key) => self.v[x] = key.into(),
                     None => program_counter_status = ProgramCounterStatus::Repeat,
                 }
             }
