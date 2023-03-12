@@ -3,13 +3,11 @@ mod timer;
 
 use rand::random;
 
-use crate::keypad::{KeyPad, Key, KeyState};
+use crate::display::PixelBuffer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
-use timer::Timer;
+use crate::keypad::{Key, KeyPad, KeyState};
 use instructions::Instruction;
-
-pub const PIXELS_WIDTH: usize = 64;
-pub const PIXELS_HEIGHT: usize = 32;
+use timer::Timer;
 
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
@@ -25,12 +23,6 @@ enum ProgramCounterStatus {
     Jump(u16),
 }
 
-#[derive(Clone, Copy)]
-pub enum Pixel {
-    On,
-    Off,
-}
-
 pub struct Cpu {
     pc: u16,
     i: u16,
@@ -40,7 +32,7 @@ pub struct Cpu {
     v: [u8; V_REG_COUNT],
     stack: [u16; STACK_SIZE],
     ram: [u8; MEMORY_SIZE],
-    pixels: [Pixel; PIXELS_WIDTH * PIXELS_HEIGHT],
+    pub pixel_buffer: PixelBuffer,
     pub key_pad: KeyPad,
     sound_timer: Timer,
     delay_timer: Timer,
@@ -57,14 +49,14 @@ impl Cpu {
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
             ram: [0; MEMORY_SIZE],
-            pixels: [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT],
+            pixel_buffer: PixelBuffer::new(),
             key_pad: KeyPad::new(),
             sound_timer: Timer::new(cycles_per_timer_decrement),
             delay_timer: Timer::new(cycles_per_timer_decrement),
         };
 
         cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
-        
+
         cpu
     }
 
@@ -77,7 +69,7 @@ impl Cpu {
         self.v = [0; V_REG_COUNT];
         self.stack = [0; STACK_SIZE];
         self.ram = [0; MEMORY_SIZE];
-        self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
+        self.pixel_buffer = PixelBuffer::new();
 
         self.delay_timer.stop();
         self.sound_timer.stop();
@@ -99,17 +91,13 @@ impl Cpu {
         &self.ram[offset..offset + size]
     }
 
-    pub fn pixels(&self) -> &[Pixel] {
-        &self.pixels
-    }
-
     fn update_timers(&mut self) {
         self.delay_timer.tick();
         self.sound_timer.tick();
 
-        self.dt = self.dt.saturating_sub(self.delay_timer.decrease_by()); 
+        self.dt = self.dt.saturating_sub(self.delay_timer.decrease_by());
         self.st = self.st.saturating_sub(self.sound_timer.decrease_by());
-        
+
         if self.dt == 0 {
             self.delay_timer.stop();
         }
@@ -121,7 +109,7 @@ impl Cpu {
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction: Instruction = opcode.into();
-        
+
         match self.execute(instruction) {
             ProgramCounterStatus::Repeat => (),
             ProgramCounterStatus::Next => self.pc += OPCODE_SIZE,
@@ -134,18 +122,15 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        u16::from_be_bytes([
-            self.ram[self.pc as usize],
-            self.ram[self.pc as usize + 1],
-        ])
+        u16::from_be_bytes([self.ram[self.pc as usize], self.ram[self.pc as usize + 1]])
     }
 
     fn execute(&mut self, instruction: Instruction) -> ProgramCounterStatus {
         let mut program_counter_status = ProgramCounterStatus::Next;
-        
+
         match instruction {
             Instruction::OpCode00E0 => {
-                self.pixels = [Pixel::Off; PIXELS_WIDTH * PIXELS_HEIGHT];
+                self.pixel_buffer.clear();
             }
 
             Instruction::OpCode00EE => {
@@ -266,35 +251,16 @@ impl Cpu {
             }
 
             Instruction::OpCodeDXYN(x, y, n) => {
-                self.v[0xf] = 0;
+                let start_x = self.v[x] as usize;
+                let start_y = self.v[y] as usize;
 
-                let sprite = self.read_from_memory(self.i as usize, n as usize).to_owned();
-                let start_x = self.v[x] as usize % PIXELS_WIDTH; 
-                let start_y = self.v[y] as usize % PIXELS_HEIGHT;
-                
-                for (i, byte) in sprite.iter().enumerate() {
-                    for j in 0..u8::BITS as usize {
-                        let x = start_x + j;
-                        let y = start_y + i;
-                        if x >= PIXELS_WIDTH || y >= PIXELS_HEIGHT {
-                            continue;
-                        }
-                        let offset = x + y * PIXELS_WIDTH;
-                        let bit = (byte >> (u8::BITS as usize - 1 - j)) & 0x1;
-                        let pixel = self.pixels[offset];
-                        if bit == 1 {
-                            match pixel {
-                                Pixel::On => {
-                                    self.pixels[offset] = Pixel::Off;
-                                    self.v[0xf] = 1;
-                                },
-                                Pixel::Off => {
-                                    self.pixels[offset] = Pixel::On;
-                                },
-                            }
-                        }
-                    }
-                }
+                let sprite = self
+                    .read_from_memory(self.i as usize, n as usize)
+                    .to_owned();
+
+                let has_collided = self.pixel_buffer.draw(&sprite, (start_x, start_y));
+
+                self.v[0xf] = if has_collided { 1 } else { 0 };
             }
 
             Instruction::OpCodeEX9E(x) => {

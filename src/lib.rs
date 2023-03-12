@@ -1,15 +1,16 @@
 mod clock;
 mod cpu;
-mod keypad;
+mod display;
 mod font;
+mod keypad;
 
 use std::fs;
 use std::path::Path;
 
-pub use cpu::{Pixel, PIXELS_WIDTH, PIXELS_HEIGHT};
-pub use keypad::{Key, KeyState};
 use clock::Clock;
 use cpu::Cpu;
+pub use display::{Pixel, PIXELS_HEIGHT, PIXELS_WIDTH};
+pub use keypad::{Key, KeyState};
 
 const DEFAULT_SPEED: u64 = 700;
 const TIMER_FREQUENCY: f64 = 60.0;
@@ -40,12 +41,13 @@ impl Chip8 {
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
-        self.cpu.set_timer_speed(instructions_per_second as f64 / TIMER_FREQUENCY);
+        self.cpu
+            .set_timer_speed(instructions_per_second as f64 / TIMER_FREQUENCY);
         self.clock.set_speed(instructions_per_second);
     }
 
     pub fn pixels(&self) -> &[Pixel] {
-        self.cpu.pixels()
+        self.cpu.pixel_buffer.pixels()
     }
 
     pub fn load(&mut self, path: &Path) {
