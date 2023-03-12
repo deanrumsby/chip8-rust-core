@@ -6,6 +6,7 @@ use rand::random;
 use crate::display::PixelBuffer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::keypad::{Key, KeyPad, KeyState};
+use crate::memory::Memory;
 use instructions::Instruction;
 use timer::Timer;
 
@@ -14,7 +15,6 @@ const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
-const MEMORY_SIZE: usize = 4096;
 
 enum ProgramCounterStatus {
     Repeat,
@@ -31,7 +31,7 @@ pub struct Cpu {
     st: u8,
     v: [u8; V_REG_COUNT],
     stack: [u16; STACK_SIZE],
-    ram: [u8; MEMORY_SIZE],
+    pub ram: Memory,
     pub pixel_buffer: PixelBuffer,
     pub key_pad: KeyPad,
     sound_timer: Timer,
@@ -48,14 +48,14 @@ impl Cpu {
             st: 0,
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
-            ram: [0; MEMORY_SIZE],
+            ram: Memory::new(),
             pixel_buffer: PixelBuffer::new(),
             key_pad: KeyPad::new(),
             sound_timer: Timer::new(cycles_per_timer_decrement),
             delay_timer: Timer::new(cycles_per_timer_decrement),
         };
 
-        cpu.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
+        cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
 
         cpu
     }
@@ -68,27 +68,18 @@ impl Cpu {
         self.st = 0;
         self.v = [0; V_REG_COUNT];
         self.stack = [0; STACK_SIZE];
-        self.ram = [0; MEMORY_SIZE];
+        self.ram = Memory::new();
         self.pixel_buffer = PixelBuffer::new();
 
         self.delay_timer.stop();
         self.sound_timer.stop();
 
-        self.load_into_memory(FONT_START_OFFSET, FONT.as_slice());
-    }
-
-    pub fn load_into_memory(&mut self, offset: usize, bytes: &[u8]) {
-        let range = offset..offset + bytes.len();
-        self.ram[range].copy_from_slice(bytes);
+        self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
 
     pub fn set_timer_speed(&mut self, cycles_per_decrement: f64) {
         self.sound_timer.set_speed(cycles_per_decrement);
         self.delay_timer.set_speed(cycles_per_decrement);
-    }
-
-    fn read_from_memory(&self, offset: usize, size: usize) -> &[u8] {
-        &self.ram[offset..offset + size]
     }
 
     fn update_timers(&mut self) {
@@ -254,11 +245,9 @@ impl Cpu {
                 let start_x = self.v[x] as usize;
                 let start_y = self.v[y] as usize;
 
-                let sprite = self
-                    .read_from_memory(self.i as usize, n as usize)
-                    .to_owned();
+                let sprite = self.ram.read(self.i as usize, n as usize);
 
-                let has_collided = self.pixel_buffer.draw(&sprite, (start_x, start_y));
+                let has_collided = self.pixel_buffer.draw(sprite, (start_x, start_y));
 
                 self.v[0xf] = if has_collided { 1 } else { 0 };
             }
@@ -314,16 +303,16 @@ impl Cpu {
                 let units = vx % 10;
                 let tens = (vx / 10) % 10;
                 let hundreds = (vx / 100) % 10;
-                self.load_into_memory(self.i as usize, &[hundreds, tens, units]);
+                self.ram.load(self.i as usize, &[hundreds, tens, units]);
             }
 
             Instruction::OpCodeFX55(x) => {
                 let buffer = &self.v[0..=x].to_owned();
-                self.load_into_memory(self.i as usize, buffer);
+                self.ram.load(self.i as usize, buffer);
             }
 
             Instruction::OpCodeFX65(x) => {
-                let buffer = &self.read_from_memory(self.i as usize, x + 1).to_owned();
+                let buffer = self.ram.read(self.i as usize, x + 1);
                 self.v[0..=x].copy_from_slice(buffer);
             }
         }

@@ -3,6 +3,7 @@ mod cpu;
 mod display;
 mod font;
 mod keypad;
+mod memory;
 
 use std::fs;
 use std::path::Path;
@@ -52,7 +53,7 @@ impl Chip8 {
 
     pub fn load(&mut self, path: &Path) {
         let buffer = fs::read(path).unwrap();
-        self.cpu.load_into_memory(0x200, buffer.as_slice());
+        self.cpu.ram.load(0x200, buffer.as_slice());
     }
 
     pub fn step(&mut self) {
