@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
@@ -30,7 +31,8 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     let mut chip8 = Chip8::new();
-    chip8.load(Path::new(&env::args().nth(1).unwrap()));
+    let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
+    chip8.load(rom.as_slice());
 
     if env::args().nth(2).is_some() {
         chip8.set_speed(env::args().nth(2).unwrap().parse::<u64>().unwrap());

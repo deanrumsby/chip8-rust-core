@@ -5,9 +5,6 @@ mod font;
 mod keypad;
 mod memory;
 
-use std::fs;
-use std::path::Path;
-
 use clock::Clock;
 use cpu::Cpu;
 pub use display::{Pixel, PIXELS_HEIGHT, PIXELS_WIDTH};
@@ -51,9 +48,8 @@ impl Chip8 {
         self.cpu.pixel_buffer.pixels()
     }
 
-    pub fn load(&mut self, path: &Path) {
-        let buffer = fs::read(path).unwrap();
-        self.cpu.ram.load(0x200, buffer.as_slice());
+    pub fn load(&mut self, bytes: &[u8]) {
+        self.cpu.ram.load(0x200, bytes);
     }
 
     pub fn step(&mut self) {
