@@ -71,11 +71,17 @@ fn main() {
                 Event::KeyDown {
                     keycode: Some(code),
                     ..
-                } => chip8.handle_key_event(key_map[&code], KeyState::Pressed),
+                } => match key_map.get(&code) {
+                    Some(&key) => chip8.handle_key_event(key, KeyState::Pressed),
+                    _ => {}
+                }
                 Event::KeyUp {
                     keycode: Some(code),
                     ..
-                } => chip8.handle_key_event(key_map[&code], KeyState::Released),
+                } => match key_map.get(&code) {
+                    Some(&key) => chip8.handle_key_event(key, KeyState::Released),
+                    _ => {}
+                }
                 _ => {}
             }
         }
