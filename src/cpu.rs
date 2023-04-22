@@ -254,14 +254,14 @@ impl Cpu {
 
             Instruction::OpCodeEX9E(x) => {
                 let key: Key = self.v[x].into();
-                if self.key_pad[key] == KeyState::Pressed {
+                if self.key_pad.get(key) == KeyState::Pressed {
                     program_counter_status = ProgramCounterStatus::Skip;
                 }
             }
 
             Instruction::OpCodeEXA1(x) => {
                 let key: Key = self.v[x].into();
-                match self.key_pad[key] {
+                match self.key_pad.get(key) {
                     KeyState::Pressed => {}
                     _ => program_counter_status = ProgramCounterStatus::Skip,
                 }
@@ -316,7 +316,6 @@ impl Cpu {
                 self.v[0..=x].copy_from_slice(buffer);
             }
         }
-
         program_counter_status
     }
 }

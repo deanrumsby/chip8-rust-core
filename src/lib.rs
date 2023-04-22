@@ -61,7 +61,7 @@ impl Chip8 {
     }
 
     pub fn handle_key_event(&mut self, key: Key, state: KeyState) {
-        self.cpu.key_pad[key] = state;
+        self.cpu.key_pad.set(key, state);
     }
 
     pub fn reset(&mut self) {
