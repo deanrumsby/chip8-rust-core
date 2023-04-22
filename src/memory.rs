@@ -1,5 +1,3 @@
-use std::ops::Index;
-
 const MEMORY_SIZE: usize = 4096;
 
 pub struct Memory {
@@ -20,13 +18,5 @@ impl Memory {
     pub fn load(&mut self, offset: usize, bytes: &[u8]) {
         let range = offset..offset + bytes.len();
         self.data[range].copy_from_slice(bytes);
-    }
-}
-
-impl Index<usize> for Memory {
-    type Output = u8;
-
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.data[index]
     }
 }

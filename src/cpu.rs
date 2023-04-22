@@ -113,7 +113,7 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        u16::from_be_bytes([self.ram[self.pc as usize], self.ram[self.pc as usize + 1]])
+        u16::from_be_bytes(self.ram.read(self.pc as usize, 2).try_into().expect("Failed to fetch instruction"))
     }
 
     fn execute(&mut self, instruction: Instruction) -> ProgramCounterStatus {
