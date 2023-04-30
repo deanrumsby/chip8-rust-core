@@ -31,6 +31,7 @@ impl Chip8 {
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
+        self.instructions_per_second = instructions_per_second;
         self.cpu.set_speed(instructions_per_second);
     }
 

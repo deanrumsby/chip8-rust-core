@@ -56,7 +56,6 @@ impl Cpu {
         };
 
         cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
-
         cpu
     }
 
