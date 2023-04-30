@@ -1,3 +1,4 @@
+const TIMER_FREQUENCY: f64 = 60.0;
 
 pub struct Timer {
     is_active: bool,
@@ -8,10 +9,10 @@ pub struct Timer {
 }
 
 impl Timer {
-    pub fn new(cycles_per_decrement: f64) -> Self {
+    pub fn new(cpu_speed: f64) -> Self {
         Self {
             is_active: false,
-            cycles_per_decrement,
+            cycles_per_decrement: cpu_speed / TIMER_FREQUENCY,
             cycle_count: 0,
             decrement_count: 0,
             should_decrease: false,
@@ -25,8 +26,8 @@ impl Timer {
         self.should_decrease = false;
     }
 
-    pub fn set_speed(&mut self, cycles_per_decrement: f64) {
-        self.cycles_per_decrement = cycles_per_decrement;
+    pub fn set_speed(&mut self, cpu_speed: u64) {
+        self.cycles_per_decrement = cpu_speed as f64 / TIMER_FREQUENCY;
     }
 
     pub fn decrease_by(&self) -> u8 {

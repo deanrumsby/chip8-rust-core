@@ -15,6 +15,7 @@ const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
+const DEFAULT_SPEED: u64 = 700;
 
 enum ProgramCounterStatus {
     Repeat,
@@ -39,7 +40,7 @@ pub struct Cpu {
 }
 
 impl Cpu {
-    pub fn new(cycles_per_timer_decrement: f64) -> Self {
+    pub fn new(instructions_per_second: u64) -> Self {
         let mut cpu = Self {
             pc: PROGRAM_START_OFFSET,
             i: 0,
@@ -51,8 +52,8 @@ impl Cpu {
             ram: Memory::new(),
             pixel_buffer: PixelBuffer::new(),
             key_pad: KeyPad::new(),
-            sound_timer: Timer::new(cycles_per_timer_decrement),
-            delay_timer: Timer::new(cycles_per_timer_decrement),
+            sound_timer: Timer::new(instructions_per_second as f64),
+            delay_timer: Timer::new(instructions_per_second as f64),
         };
 
         cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
@@ -77,9 +78,9 @@ impl Cpu {
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
 
-    pub fn set_timer_speed(&mut self, cycles_per_decrement: f64) {
-        self.sound_timer.set_speed(cycles_per_decrement);
-        self.delay_timer.set_speed(cycles_per_decrement);
+    pub fn set_speed(&mut self, instructions_per_second: u64) {
+        self.sound_timer.set_speed(instructions_per_second);
+        self.delay_timer.set_speed(instructions_per_second);
     }
 
     fn update_timers(&mut self) {
@@ -96,7 +97,7 @@ impl Cpu {
             self.sound_timer.stop();
         }
     }
-
+    
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction: Instruction = opcode.into();
