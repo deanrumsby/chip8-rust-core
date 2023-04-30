@@ -15,7 +15,6 @@ const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
-const DEFAULT_SPEED: u64 = 700;
 
 enum ProgramCounterStatus {
     Repeat,

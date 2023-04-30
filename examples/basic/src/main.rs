@@ -2,13 +2,16 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Instant, Duration};
+use std::thread;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
 use chip8_core::{Chip8, Key, KeyState, Pixel, PIXELS_HEIGHT, PIXELS_WIDTH};
+
+const FRAME_DURATION: Duration = Duration::from_micros(1_000_000 / 60);
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -57,10 +60,9 @@ fn main() {
         (Keycode::V, Key::KeyF),
     ]);
 
-    chip8.start();
-    let mut frame_start = std::time::Instant::now();
-
     'running: loop {
+        let frame_start = Instant::now();
+        
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -86,28 +88,28 @@ fn main() {
             }
         }
 
-        chip8.step();
+        chip8.emulate_frame(1);
+        
+        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.clear();
 
-        if frame_start.elapsed() > Duration::from_millis(1000 / 60) {
-            canvas.set_draw_color(Color::RGB(0, 0, 0));
-            canvas.clear();
+        let pixels = chip8.pixels();
+        canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-            let pixels = chip8.pixels();
-            canvas.set_draw_color(Color::RGB(255, 255, 255));
-
-            for (offset, pixel) in pixels.iter().enumerate() {
-                let (x, y) = (offset % PIXELS_WIDTH, offset / PIXELS_WIDTH);
-                match pixel {
-                    Pixel::On => canvas
-                        .draw_point(sdl2::rect::Point::new(x as i32, y as i32))
-                        .unwrap(),
-                    _ => {}
-                }
+        for (offset, pixel) in pixels.iter().enumerate() {
+            let (x, y) = (offset % PIXELS_WIDTH, offset / PIXELS_WIDTH);
+            match pixel {
+                Pixel::On => canvas
+                    .draw_point(sdl2::rect::Point::new(x as i32, y as i32))
+                    .unwrap(),
+                _ => {}
             }
-            canvas.present();
-            frame_start = std::time::Instant::now();
         }
-
-        chip8.tick();
+        canvas.present();
+       
+        let dt = frame_start.elapsed();
+        if dt < FRAME_DURATION {
+            thread::sleep(FRAME_DURATION - dt);
+        }
     }
 }
