@@ -1,9 +1,13 @@
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+
 pub const KEY_COUNT: usize = 16;
 
 pub struct KeyPad {
     state: [KeyState; KEY_COUNT],
 }
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Copy, PartialEq)]
 pub enum KeyState {
     Released,
@@ -11,6 +15,7 @@ pub enum KeyState {
     None,
 }
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Copy)]
 pub enum Key {
     Key0,

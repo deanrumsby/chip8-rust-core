@@ -15,13 +15,16 @@ pub use keypad::{Key, KeyState};
 const DEFAULT_SPEED: u64 = 700;
 const DEFAULT_FRAME_RATE: u64 = 60;
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct Chip8 {
     instructions_per_second: u64,
     frame_rate: u64,
     cpu: Cpu,
 }
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl Chip8 {
+    #[cfg_attr(feature = "wasm", wasm_bindgen(constructor))]
     pub fn new() -> Self {
         Self {
             instructions_per_second: DEFAULT_SPEED,

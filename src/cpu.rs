@@ -1,7 +1,7 @@
 mod instructions;
 mod timer;
 
-use rand::random;
+use nanorand::{Rng, WyRand};
 
 use crate::display::PixelBuffer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
@@ -237,7 +237,8 @@ impl Cpu {
             }
 
             Instruction::OpCodeCXNN(x, nn) => {
-                self.v[x] = random::<u8>() & nn;
+                let mut rng = WyRand::new_seed(532);
+                self.v[x] = rng.generate::<u8>() & nn;
             }
 
             Instruction::OpCodeDXYN(x, y, n) => {

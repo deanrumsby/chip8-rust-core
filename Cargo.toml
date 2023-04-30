@@ -3,8 +3,11 @@ name = "chip8_core"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 [dependencies]
-rand = "0.8.5"
+nanorand = { version = "0.7.0", default-features = false, features = ["wyrand"] }
 wasm-bindgen = { version = "0.2.84", optional = true }
 
 [features]

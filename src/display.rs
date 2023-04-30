@@ -1,6 +1,13 @@
+#[cfg(feature = "wasm")]
+use wasm_bindgen::Clamped;
+
+#[cfg(feature = "wasm")]
+use wasm_bindgen::prelude::*;
+
 pub const PIXELS_WIDTH: usize = 64;
 pub const PIXELS_HEIGHT: usize = 32;
 
+#[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Copy)]
 pub enum Pixel {
     On,
@@ -18,8 +25,18 @@ impl PixelBuffer {
         }
     }
 
+    #[cfg(not(feature = "wasm"))]
     pub fn pixels(&self) -> &[Pixel] {
         &self.pixels
+    }
+
+    #[cfg(feature = "wasm")]
+    pub fn pixels(&self) -> Clamped<&[u8]> {
+        let buffer = self.pixels.iter().flat_map(|pixel| match pixel {
+            Pixel::On => [0, 0, 0, 255],
+            Pixel::Off => [0, 0, 0, 0],
+        });
+        Clamped::<&[u8]>::from(buffer)
     }
 
     pub fn clear(&mut self) {
