@@ -51,20 +51,27 @@ impl Chip8 {
         js_sys::Uint8ClampedArray::from(self.cpu.frame.frame())
     }
 
+    #[cfg(not(feature = "wasm"))]
     pub fn load(&mut self, bytes: &[u8]) {
         self.cpu.ram.load(0x200, bytes);
     }
 
-    pub fn emulate(&mut self, cycles: u64) {
+    #[cfg(feature = "wasm")]
+    pub fn load(&mut self, bytes: js_sys::Uint8Array) {
+        self.cpu.ram.load(0x200, bytes.to_vec().as_slice());
+    }
+
+
+    pub fn emulate(&mut self, cycles: u32) {
         for _ in 0..cycles {
             self.cpu.step();
         }
     }
 
-    pub fn emulate_frame(&mut self, frames: usize) {
+    pub fn emulate_frame(&mut self, frames: u32) {
         let cycles_per_frame = self.instructions_per_second / self.frame_rate;
         for _ in 0..frames {
-            self.emulate(cycles_per_frame);
+            self.emulate(cycles_per_frame as u32);
         }
     }
 

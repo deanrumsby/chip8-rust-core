@@ -1,0 +1,58 @@
+<html>
+  <head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+  </head>
+  <body>
+    <canvas
+	id="canvas"
+	width=64 
+	height=32 
+	style="border: 1px solid black; width: 640px; height: 320px; image-rendering: pixelated;">
+    </canvas>
+    <input
+	id="input"
+    	type="file" />
+    <button 
+	id="start"
+	type="button">
+	    Start
+    </button>
+    <!-- Note the usage of `type=module` here as this is an ES6 module -->
+    <script type="module">
+      import init, { Chip8 } from './pkg/chip8_core.js';
+
+      async function run() {
+        await init();
+
+        // And afterwards we can use all the functionality defined in wasm.
+        const chip8 = new Chip8();
+
+	const input = document.querySelector('#input');
+	input.addEventListener('change', (e) => {
+	    const fileReader = new FileReader();
+	    fileReader.onload = () => {
+	    	const typedArray = new Uint8Array(fileReader.result);
+		chip8.load(typedArray);
+	    };
+	    fileReader.readAsArrayBuffer(input.files[0]);
+	});
+	
+	const canvas = document.querySelector('#canvas');
+	const ctx = canvas.getContext('2d');
+		
+	const animate = () => {
+	    chip8.emulate_frame(1);
+	    const imageData = new ImageData(chip8.frame(), 64);
+	    ctx.putImageData(imageData, 0, 0);
+	    window.requestAnimationFrame(animate);
+	};
+
+
+	const start = document.querySelector('#start');
+	start.addEventListener('click', animate);
+      }
+
+      run();
+    </script>
+  </body>
+</html>
