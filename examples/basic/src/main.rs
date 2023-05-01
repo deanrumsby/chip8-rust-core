@@ -9,7 +9,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
-use chip8_core::{Chip8, Key, KeyState, Pixel, PIXELS_HEIGHT, PIXELS_WIDTH};
+use chip8_core::{Chip8, Key, KeyState, FRAME_HEIGHT, FRAME_WIDTH, PIXEL_ON};
 
 const FRAME_DURATION: Duration = Duration::from_micros(1_000_000 / 60);
 
@@ -26,7 +26,7 @@ fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
 
     canvas
-        .set_logical_size(PIXELS_WIDTH as u32, PIXELS_HEIGHT as u32)
+        .set_logical_size(FRAME_WIDTH as u32, FRAME_HEIGHT as u32)
         .unwrap();
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
@@ -93,13 +93,14 @@ fn main() {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
 
-        let pixels = chip8.pixels();
+        let pixels = chip8.frame();
         canvas.set_draw_color(Color::RGB(255, 255, 255));
 
-        for (offset, pixel) in pixels.iter().enumerate() {
-            let (x, y) = (offset % PIXELS_WIDTH, offset / PIXELS_WIDTH);
+        for (offset, pixel_state) in pixels.chunks(4).enumerate() {
+            let pixel = pixel_state[3];
+            let (x, y) = (offset % FRAME_WIDTH, offset / FRAME_WIDTH);
             match pixel {
-                Pixel::On => canvas
+                PIXEL_ON => canvas
                     .draw_point(sdl2::rect::Point::new(x as i32, y as i32))
                     .unwrap(),
                 _ => {}
