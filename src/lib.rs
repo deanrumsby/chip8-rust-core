@@ -1,5 +1,5 @@
 mod cpu;
-mod display;
+mod frame;
 mod font;
 mod keypad;
 mod memory;
@@ -8,9 +8,8 @@ mod memory;
 use wasm_bindgen::prelude::*;
 
 use cpu::Cpu;
-pub use display::{Pixel, PIXELS_HEIGHT, PIXELS_WIDTH};
 pub use keypad::{Key, KeyState};
-
+pub use frame::{PIXEL_ON, PIXEL_OFF, FRAME_WIDTH, FRAME_HEIGHT};
 
 const DEFAULT_SPEED: u64 = 700;
 const DEFAULT_FRAME_RATE: u64 = 60;
@@ -42,8 +41,14 @@ impl Chip8 {
         self.frame_rate = frame_rate;
     }
 
-    pub fn pixels(&self) -> &[Pixel] {
-        self.cpu.pixel_buffer.pixels()
+    #[cfg(not(feature = "wasm"))]
+    pub fn frame(&self) -> &[u8] {
+        self.cpu.frame.frame()
+    }
+
+    #[cfg(feature = "wasm")]
+    pub fn frame(&self) -> js_sys::Uint8ClampedArray {
+        js_sys::Uint8ClampedArray::from(self.cpu.frame.frame())
     }
 
     pub fn load(&mut self, bytes: &[u8]) {

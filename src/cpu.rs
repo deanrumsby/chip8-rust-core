@@ -3,7 +3,7 @@ mod timer;
 
 use nanorand::{Rng, WyRand};
 
-use crate::display::PixelBuffer;
+use crate::frame::FrameBuffer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::keypad::{Key, KeyPad, KeyState};
 use crate::memory::Memory;
@@ -32,7 +32,7 @@ pub struct Cpu {
     v: [u8; V_REG_COUNT],
     stack: [u16; STACK_SIZE],
     pub ram: Memory,
-    pub pixel_buffer: PixelBuffer,
+    pub frame: FrameBuffer,
     pub key_pad: KeyPad,
     sound_timer: Timer,
     delay_timer: Timer,
@@ -49,7 +49,7 @@ impl Cpu {
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
             ram: Memory::new(),
-            pixel_buffer: PixelBuffer::new(),
+            frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
             sound_timer: Timer::new(instructions_per_second as f64),
             delay_timer: Timer::new(instructions_per_second as f64),
@@ -68,7 +68,7 @@ impl Cpu {
         self.v = [0; V_REG_COUNT];
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
-        self.pixel_buffer = PixelBuffer::new();
+        self.frame = FrameBuffer::new();
 
         self.delay_timer.stop();
         self.sound_timer.stop();
@@ -120,7 +120,7 @@ impl Cpu {
 
         match instruction {
             Instruction::OpCode00E0 => {
-                self.pixel_buffer.clear();
+                self.frame.clear();
             }
 
             Instruction::OpCode00EE => {
@@ -247,7 +247,7 @@ impl Cpu {
 
                 let sprite = self.ram.read(self.i as usize, n as usize);
 
-                let has_collided = self.pixel_buffer.draw(sprite, (start_x, start_y));
+                let has_collided = self.frame.draw(sprite, (start_x, start_y));
 
                 self.v[0xf] = if has_collided { 1 } else { 0 };
             }
