@@ -1,5 +1,4 @@
 mod instructions;
-mod timer;
 
 use nanorand::{Rng, WyRand};
 
@@ -8,13 +7,16 @@ use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::keypad::{Key, KeyPad, KeyState};
 use crate::memory::Memory;
 use instructions::Instruction;
-use timer::Timer;
 
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
+const ONE_SECOND_IN_MICRO_SECONDS: u64 = 1_000_000;
+const DEFAULT_INSTRUCTIONS_PER_SECOND: u64 = 700;
+const TIMER_INTERVAL_MICRO_SECONDS: u64 = 16_666;
+const PROGRAM_START: usize = 0x200;
 
 enum ProgramCounterStatus {
     Repeat,
@@ -24,6 +26,9 @@ enum ProgramCounterStatus {
 }
 
 pub struct Cpu {
+    timestamp: u64,
+    instructions_per_second: u64,
+    micro_seconds_per_instruction: u64,
     pc: u16,
     i: u16,
     sp: u8,
@@ -34,13 +39,16 @@ pub struct Cpu {
     pub ram: Memory,
     pub frame: FrameBuffer,
     pub key_pad: KeyPad,
-    sound_timer: Timer,
-    delay_timer: Timer,
+    sound_timer_counter: Option<u64>,
+    delay_timer_counter: Option<u64>,
 }
 
 impl Cpu {
-    pub fn new(instructions_per_second: u64) -> Self {
+    pub fn new() -> Self {
         let mut cpu = Self {
+            timestamp: 0,
+            instructions_per_second: 0,
+            micro_seconds_per_instruction: 0,
             pc: PROGRAM_START_OFFSET,
             i: 0,
             sp: 0,
@@ -51,15 +59,25 @@ impl Cpu {
             ram: Memory::new(),
             frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
-            sound_timer: Timer::new(instructions_per_second as f64),
-            delay_timer: Timer::new(instructions_per_second as f64),
+            sound_timer_counter: None,
+            delay_timer_counter: None,
         };
 
+        cpu.set_speed(DEFAULT_INSTRUCTIONS_PER_SECOND);
         cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
         cpu
     }
 
+    pub fn start(&mut self, timestamp: u64) {
+        self.timestamp = timestamp;
+    }
+
+    pub fn load_program(&mut self, bytes: &[u8]) {
+        self.ram.load(PROGRAM_START, bytes);
+    }
+
     pub fn reset(&mut self) {
+        self.timestamp = 0;
         self.pc = PROGRAM_START_OFFSET;
         self.i = 0;
         self.sp = 0;
@@ -70,30 +88,47 @@ impl Cpu {
         self.ram = Memory::new();
         self.frame = FrameBuffer::new();
 
-        self.delay_timer.stop();
-        self.sound_timer.stop();
+        self.delay_timer_counter = None;
+        self.sound_timer_counter = None;
 
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
-        self.sound_timer.set_speed(instructions_per_second);
-        self.delay_timer.set_speed(instructions_per_second);
+        self.instructions_per_second = instructions_per_second;
+        self.micro_seconds_per_instruction = ONE_SECOND_IN_MICRO_SECONDS / instructions_per_second;
     }
 
-    fn update_timers(&mut self) {
-        self.delay_timer.tick();
-        self.sound_timer.tick();
-
-        self.dt = self.dt.saturating_sub(self.delay_timer.decrease_by());
-        self.st = self.st.saturating_sub(self.sound_timer.decrease_by());
-
-        if self.dt == 0 {
-            self.delay_timer.stop();
+    fn step_timers(&mut self) {
+        for timer in [(self.dt, self.delay_timer_counter), (self.st, self.sound_timer_counter)].iter_mut() {
+            match timer {
+                (0, timer_counter) => {
+                    *timer_counter = None;
+                },
+                (timer, None) => {
+                    *timer = 0;
+                },
+                (timer, Some(timer_counter)) => {
+                    let new_counter = *timer_counter + self.micro_seconds_per_instruction;
+                    if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
+                        *timer_counter = new_counter - TIMER_INTERVAL_MICRO_SECONDS;
+                        *timer = timer.saturating_sub(1);
+                    } else {
+                        *timer_counter = new_counter;
+                    }
+                },
+            }
+                    
         }
-        if self.st == 0 {
-            self.sound_timer.stop();
-        }
+    }
+    
+    pub fn emulate(&mut self, timestamp: u64) {
+        let instructions_to_emulate = (timestamp - self.timestamp) / self.micro_seconds_per_instruction;
+            for _ in 0..instructions_to_emulate as u64 {
+                self.step();
+            }
+        let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
+        self.timestamp = timestamp + time_progressed;
     }
     
     pub fn step(&mut self) {
@@ -107,7 +142,7 @@ impl Cpu {
             ProgramCounterStatus::Jump(address) => self.pc = address,
         }
 
-        self.update_timers();
+        self.step_timers();
         self.key_pad.reset_released_key_state();
     }
 
@@ -281,12 +316,12 @@ impl Cpu {
 
             Instruction::OpCodeFX15(x) => {
                 self.dt = self.v[x];
-                self.delay_timer.start();
+                self.delay_timer_counter = Some(0);
             }
 
             Instruction::OpCodeFX18(x) => {
                 self.st = self.v[x];
-                self.sound_timer.start();
+                self.sound_timer_counter = Some(0);
             }
 
             Instruction::OpCodeFX1E(x) => {

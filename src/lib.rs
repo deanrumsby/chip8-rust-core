@@ -1,23 +1,22 @@
 mod cpu;
-mod frame;
 mod font;
+mod frame;
 mod keypad;
 mod memory;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
-use cpu::Cpu;
-pub use keypad::{Key, KeyState};
-pub use frame::{PIXEL_ON, PIXEL_OFF, FRAME_WIDTH, FRAME_HEIGHT};
+#[cfg(feature = "wasm")]
+use js_sys::{Uint8Array, Uint8ClampedArray};
 
-const DEFAULT_SPEED: u64 = 700;
-const DEFAULT_FRAME_RATE: u64 = 60;
+use cpu::Cpu;
+pub use frame::{FRAME_HEIGHT, FRAME_WIDTH, PIXEL_OFF, PIXEL_ON};
+pub use keypad::{Key, KeyState};
+
 
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 pub struct Chip8 {
-    instructions_per_second: u64,
-    frame_rate: u64,
     cpu: Cpu,
 }
 
@@ -26,19 +25,16 @@ impl Chip8 {
     #[cfg_attr(feature = "wasm", wasm_bindgen(constructor))]
     pub fn new() -> Self {
         Self {
-            instructions_per_second: DEFAULT_SPEED,
-            frame_rate: DEFAULT_FRAME_RATE,
-            cpu: Cpu::new(DEFAULT_SPEED),
+            cpu: Cpu::new(),
         }
     }
 
-    pub fn set_speed(&mut self, instructions_per_second: u64) {
-        self.instructions_per_second = instructions_per_second;
-        self.cpu.set_speed(instructions_per_second);
+    pub fn start(&mut self, timestamp: u64) {
+        self.cpu.start(timestamp);
     }
 
-    pub fn set_frame_rate(&mut self, frame_rate: u64) {
-        self.frame_rate = frame_rate;
+    pub fn set_speed(&mut self, instructions_per_second: u64) {
+        self.cpu.set_speed(instructions_per_second);
     }
 
     #[cfg(not(feature = "wasm"))]
@@ -47,32 +43,22 @@ impl Chip8 {
     }
 
     #[cfg(feature = "wasm")]
-    pub fn frame(&self) -> js_sys::Uint8ClampedArray {
-        js_sys::Uint8ClampedArray::from(self.cpu.frame.frame())
+    pub fn frame(&self) -> Uint8ClampedArray {
+        Uint8ClampedArray::from(self.cpu.frame.frame())
     }
 
     #[cfg(not(feature = "wasm"))]
     pub fn load(&mut self, bytes: &[u8]) {
-        self.cpu.ram.load(0x200, bytes);
+        self.cpu.load_program(bytes);
     }
 
     #[cfg(feature = "wasm")]
-    pub fn load(&mut self, bytes: js_sys::Uint8Array) {
-        self.cpu.ram.load(0x200, bytes.to_vec().as_slice());
+    pub fn load(&mut self, bytes: Uint8Array) {
+        self.cpu.load_program(bytes.to_vec().as_slice());
     }
 
-
-    pub fn emulate(&mut self, cycles: u32) {
-        for _ in 0..cycles {
-            self.cpu.step();
-        }
-    }
-
-    pub fn emulate_frame(&mut self, frames: u32) {
-        let cycles_per_frame = self.instructions_per_second / self.frame_rate;
-        for _ in 0..frames {
-            self.emulate(cycles_per_frame as u32);
-        }
+    pub fn emulate(&mut self, timestamp: u64) {
+        self.cpu.emulate(timestamp);
     }
 
     pub fn handle_key_event(&mut self, key: Key, state: KeyState) {
