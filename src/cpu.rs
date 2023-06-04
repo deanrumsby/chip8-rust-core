@@ -128,7 +128,8 @@ impl Cpu {
                 self.step();
             }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
-        self.timestamp = timestamp + time_progressed;
+        self.timestamp += time_progressed;
+        println!("{}", self.timestamp);
     }
     
     pub fn step(&mut self) {
