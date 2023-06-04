@@ -1,8 +1,9 @@
 [package]
-name = "basic"
+name = "standard"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 chip8_core = { path = "../.." }
-sdl2 = "0.35.2"
+pixels = "0.12.1"
+winit = "0.26.1"
