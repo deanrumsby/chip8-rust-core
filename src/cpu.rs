@@ -124,12 +124,12 @@ impl Cpu {
     
     pub fn emulate(&mut self, timestamp: u64) {
         let instructions_to_emulate = (timestamp - self.timestamp) / self.micro_seconds_per_instruction;
+        println!("Emulating {} instructions", instructions_to_emulate);
             for _ in 0..instructions_to_emulate as u64 {
                 self.step();
             }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
         self.timestamp += time_progressed;
-        println!("{}", self.timestamp);
     }
     
     pub fn step(&mut self) {
