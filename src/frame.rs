@@ -1,14 +1,12 @@
 pub const FRAME_WIDTH: usize = 64;
 pub const FRAME_HEIGHT: usize = 32;
-pub const PIXEL_ON: u8 = u8::MAX;
-pub const PIXEL_OFF: u8 = 0;
+pub const PIXEL_ON: [u8; 4] = [u8::MAX, u8::MAX, u8::MAX, u8::MAX];
+pub const PIXEL_OFF: [u8; 4] = [u8::MIN, u8::MIN, u8::MIN, u8::MAX];
 
 const FRAME_SIZE: usize = FRAME_WIDTH * FRAME_HEIGHT;
 const BYTES_PER_PIXEL: usize = 4;
 const BYTES_PER_ROW: usize = FRAME_WIDTH * BYTES_PER_PIXEL;
 const BUFFER_SIZE: usize = FRAME_SIZE * BYTES_PER_PIXEL;
-const ALPHA_CHANNEL_OFFSET: usize = 3;
-
 
 pub struct FrameBuffer {
     buffer: [u8; BUFFER_SIZE],
@@ -49,14 +47,16 @@ impl FrameBuffer {
                 let bit = (byte >> (u8::BITS as usize - 1 - j)) & 0x1;
                 if bit == 1 {
                     let pixel_offset = (x * BYTES_PER_PIXEL) + y * BYTES_PER_ROW;
-                    let pixel_alpha = &mut self.buffer[pixel_offset + ALPHA_CHANNEL_OFFSET];
-                    
-                    match *pixel_alpha {
-                        PIXEL_OFF => *pixel_alpha = PIXEL_ON,
-                        _ => {
-                            *pixel_alpha = PIXEL_OFF;
-                            has_collided = true;
-                        }
+                    let pixel = self
+                        .buffer
+                        .get_mut(pixel_offset..pixel_offset + BYTES_PER_PIXEL)
+                        .expect("pixel out of bounds");
+
+                    if pixel == &PIXEL_ON {
+                        pixel.copy_from_slice(&PIXEL_OFF);
+                        has_collided = true;
+                    } else {
+                        pixel.copy_from_slice(&PIXEL_ON);
                     }
                 }
             }
