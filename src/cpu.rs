@@ -87,7 +87,6 @@ impl Cpu {
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
         self.frame = FrameBuffer::new();
-
         self.delay_timer_counter = None;
         self.sound_timer_counter = None;
 
@@ -97,29 +96,6 @@ impl Cpu {
     pub fn set_speed(&mut self, instructions_per_second: u64) {
         self.instructions_per_second = instructions_per_second;
         self.micro_seconds_per_instruction = ONE_SECOND_IN_MICRO_SECONDS / instructions_per_second;
-    }
-
-    fn step_timers(&mut self) {
-        for (timer, timer_counter) in [
-            (&mut self.dt, &mut self.delay_timer_counter),
-            (&mut self.st, &mut self.sound_timer_counter),
-        ]
-        .iter_mut()
-        {
-            match (**timer, **timer_counter) {
-                (0, _) => **timer_counter = None,
-                (_, None) => **timer = 0,
-                (_, Some(count)) => {
-                        let new_counter = count + self.micro_seconds_per_instruction;
-                        if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
-                            **timer_counter = Some(new_counter - TIMER_INTERVAL_MICRO_SECONDS);
-                            **timer = timer.saturating_sub(1);
-                        } else {
-                            **timer_counter = Some(new_counter);
-                        }
-                    }
-            }
-        }
     }
 
     pub fn emulate(&mut self, timestamp: u64) {
@@ -145,6 +121,29 @@ impl Cpu {
 
         self.step_timers();
         self.key_pad.reset_released_key_state();
+    }
+    
+    fn step_timers(&mut self) {
+        for (timer, timer_counter) in [
+            (&mut self.dt, &mut self.delay_timer_counter),
+            (&mut self.st, &mut self.sound_timer_counter),
+        ]
+        .iter_mut()
+        {
+            match (**timer, **timer_counter) {
+                (0, _) => **timer_counter = None,
+                (_, None) => **timer = 0,
+                (_, Some(count)) => {
+                        let new_counter = count + self.micro_seconds_per_instruction;
+                        if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
+                            **timer_counter = Some(new_counter - TIMER_INTERVAL_MICRO_SECONDS);
+                            **timer = timer.saturating_sub(1);
+                        } else {
+                            **timer_counter = Some(new_counter);
+                        }
+                    }
+            }
+        }
     }
 
     fn fetch(&self) -> u16 {
