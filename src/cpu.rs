@@ -2,8 +2,8 @@ mod instructions;
 
 use nanorand::{Rng, WyRand};
 
-use crate::frame::FrameBuffer;
 use crate::font::{FONT, FONT_CHAR_SIZE};
+use crate::frame::FrameBuffer;
 use crate::keypad::{Key, KeyPad, KeyState};
 use crate::memory::Memory;
 use instructions::Instruction;
@@ -100,38 +100,38 @@ impl Cpu {
     }
 
     fn step_timers(&mut self) {
-        for timer in [(self.dt, self.delay_timer_counter), (self.st, self.sound_timer_counter)].iter_mut() {
-            match timer {
-                (0, timer_counter) => {
-                    *timer_counter = None;
-                },
-                (timer, None) => {
-                    *timer = 0;
-                },
-                (timer, Some(timer_counter)) => {
-                    let new_counter = *timer_counter + self.micro_seconds_per_instruction;
-                    if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
-                        *timer_counter = new_counter - TIMER_INTERVAL_MICRO_SECONDS;
-                        *timer = timer.saturating_sub(1);
-                    } else {
-                        *timer_counter = new_counter;
+        for (timer, timer_counter) in [
+            (&mut self.dt, &mut self.delay_timer_counter),
+            (&mut self.st, &mut self.sound_timer_counter),
+        ]
+        .iter_mut()
+        {
+            match (**timer, **timer_counter) {
+                (0, _) => **timer_counter = None,
+                (_, None) => **timer = 0,
+                (_, Some(count)) => {
+                        let new_counter = count + self.micro_seconds_per_instruction;
+                        if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
+                            **timer_counter = Some(new_counter - TIMER_INTERVAL_MICRO_SECONDS);
+                            **timer = timer.saturating_sub(1);
+                        } else {
+                            **timer_counter = Some(new_counter);
+                        }
                     }
-                },
             }
-                    
         }
     }
-    
+
     pub fn emulate(&mut self, timestamp: u64) {
-        let instructions_to_emulate = (timestamp - self.timestamp) / self.micro_seconds_per_instruction;
-        println!("Emulating {} instructions", instructions_to_emulate);
-            for _ in 0..instructions_to_emulate as u64 {
-                self.step();
-            }
+        let instructions_to_emulate =
+            (timestamp - self.timestamp) / self.micro_seconds_per_instruction;
+        for _ in 0..instructions_to_emulate as u64 {
+            self.step();
+        }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
         self.timestamp += time_progressed;
     }
-    
+
     pub fn step(&mut self) {
         let opcode = self.fetch();
         let instruction: Instruction = opcode.into();
@@ -148,7 +148,12 @@ impl Cpu {
     }
 
     fn fetch(&self) -> u16 {
-        u16::from_be_bytes(self.ram.read(self.pc as usize, 2).try_into().expect("failed to fetch instruction"))
+        u16::from_be_bytes(
+            self.ram
+                .read(self.pc as usize, 2)
+                .try_into()
+                .expect("failed to fetch instruction"),
+        )
     }
 
     fn execute(&mut self, instruction: Instruction) -> ProgramCounterStatus {
