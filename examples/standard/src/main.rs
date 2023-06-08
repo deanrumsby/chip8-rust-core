@@ -17,7 +17,7 @@ fn main() -> Result<(), Error> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Chip8")
-        .with_inner_size(winit::dpi::LogicalSize::new(640, 320))
+        .with_inner_size(winit::dpi::LogicalSize::new(FRAME_WIDTH as u32 * 10, FRAME_HEIGHT as u32 * 10))
         .with_resizable(false)
         .build(&event_loop)
         .unwrap();
