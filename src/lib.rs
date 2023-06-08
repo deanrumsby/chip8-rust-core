@@ -11,7 +11,7 @@ use wasm_bindgen::prelude::*;
 use js_sys::{Uint8Array, Uint8ClampedArray};
 
 use cpu::Cpu;
-pub use frame::{FRAME_HEIGHT, FRAME_WIDTH, PIXEL_OFF, PIXEL_ON};
+pub use frame::{FRAME_HEIGHT, FRAME_WIDTH};
 pub use keypad::{Key, KeyState};
 
 
@@ -38,13 +38,13 @@ impl Chip8 {
     }
 
     #[cfg(not(feature = "wasm"))]
-    pub fn frame(&self) -> &[u8] {
-        self.cpu.frame.frame()
+    pub fn frame_buffer(&self) -> &[u8] {
+        self.cpu.frame.frame_buffer()
     }
 
     #[cfg(feature = "wasm")]
-    pub fn frame(&self) -> Uint8ClampedArray {
-        Uint8ClampedArray::from(self.cpu.frame.frame())
+    pub fn frame_buffer(&self) -> Uint8ClampedArray {
+        Uint8ClampedArray::from(self.cpu.frame.frame_buffer())
     }
 
     #[cfg(not(feature = "wasm"))]

@@ -1,4 +1,4 @@
-use chip8_core::{Chip8, Key, KeyState};
+use chip8_core::{Chip8, Key, KeyState, FRAME_HEIGHT, FRAME_WIDTH};
 
 use pixels::{Error, Pixels, SurfaceTexture};
 use winit::{
@@ -26,7 +26,7 @@ fn main() -> Result<(), Error> {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
 
-        Pixels::new(64, 32, surface_texture)?
+        Pixels::new(FRAME_WIDTH as u32, FRAME_HEIGHT as u32, surface_texture)?
     };
 
     let mut chip8 = Chip8::new();
@@ -83,7 +83,7 @@ fn main() -> Result<(), Error> {
 
             Event::MainEventsCleared => {
                 chip8.emulate(current_time());
-                pixels.frame_mut().copy_from_slice(chip8.frame());
+                pixels.frame_mut().copy_from_slice(chip8.frame_buffer());
                 pixels.render().unwrap();
             }
             _ => (),

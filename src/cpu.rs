@@ -117,7 +117,7 @@ impl Cpu {
         self.step_instruction();
         self.step_timer(Timer::Delay);
         self.step_timer(Timer::Sound);
-        self.key_pad.reset_released_key_state();
+        self.key_pad.reset_released_keys();
     }
 
     fn step_instruction(&mut self) {

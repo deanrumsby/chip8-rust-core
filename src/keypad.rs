@@ -60,7 +60,7 @@ impl KeyPad {
         None
     }
 
-    pub fn reset_released_key_state(&mut self) {
+    pub fn reset_released_keys(&mut self) {
         for key in self.state.iter_mut() {
             if *key == KeyState::Released {
                 *key = KeyState::None;

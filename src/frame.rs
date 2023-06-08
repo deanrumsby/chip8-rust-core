@@ -1,8 +1,8 @@
 pub const FRAME_WIDTH: usize = 64;
 pub const FRAME_HEIGHT: usize = 32;
-pub const PIXEL_ON: [u8; 4] = [u8::MAX, u8::MAX, u8::MAX, u8::MAX];
-pub const PIXEL_OFF: [u8; 4] = [u8::MIN, u8::MIN, u8::MIN, u8::MAX];
 
+const PIXEL_ON: [u8; 4] = [u8::MAX, u8::MAX, u8::MAX, u8::MAX];
+const PIXEL_OFF: [u8; 4] = [u8::MIN, u8::MIN, u8::MIN, u8::MAX];
 const FRAME_SIZE: usize = FRAME_WIDTH * FRAME_HEIGHT;
 const BYTES_PER_PIXEL: usize = 4;
 const BYTES_PER_ROW: usize = FRAME_WIDTH * BYTES_PER_PIXEL;
@@ -19,7 +19,7 @@ impl FrameBuffer {
         }
     }
 
-    pub fn frame(&self) -> &[u8] {
+    pub fn frame_buffer(&self) -> &[u8] {
         &self.buffer
     }
 
