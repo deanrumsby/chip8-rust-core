@@ -25,6 +25,11 @@ enum ProgramCounterStatus {
     Jump(u16),
 }
 
+enum Timer {
+    Delay,
+    Sound,
+}
+
 pub struct Cpu {
     timestamp: u64,
     instructions_per_second: u64,
@@ -39,8 +44,8 @@ pub struct Cpu {
     pub ram: Memory,
     pub frame: FrameBuffer,
     pub key_pad: KeyPad,
-    sound_timer_counter: Option<u64>,
-    delay_timer_counter: Option<u64>,
+    sound_timer: Option<u64>,
+    delay_timer: Option<u64>,
 }
 
 impl Cpu {
@@ -59,8 +64,8 @@ impl Cpu {
             ram: Memory::new(),
             frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
-            sound_timer_counter: None,
-            delay_timer_counter: None,
+            sound_timer: None,
+            delay_timer: None,
         };
 
         cpu.set_speed(DEFAULT_INSTRUCTIONS_PER_SECOND);
@@ -87,8 +92,8 @@ impl Cpu {
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
         self.frame = FrameBuffer::new();
-        self.delay_timer_counter = None;
-        self.sound_timer_counter = None;
+        self.delay_timer = None;
+        self.sound_timer = None;
 
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
@@ -109,6 +114,13 @@ impl Cpu {
     }
 
     pub fn step(&mut self) {
+        self.step_instruction();
+        self.step_timer(Timer::Delay);
+        self.step_timer(Timer::Sound);
+        self.key_pad.reset_released_key_state();
+    }
+
+    fn step_instruction(&mut self) {
         let opcode = self.fetch();
         let instruction: Instruction = opcode.into();
 
@@ -118,30 +130,25 @@ impl Cpu {
             ProgramCounterStatus::Skip => self.pc += OPCODE_SIZE * 2,
             ProgramCounterStatus::Jump(address) => self.pc = address,
         }
-
-        self.step_timers();
-        self.key_pad.reset_released_key_state();
     }
     
-    fn step_timers(&mut self) {
-        for (timer, timer_counter) in [
-            (&mut self.dt, &mut self.delay_timer_counter),
-            (&mut self.st, &mut self.sound_timer_counter),
-        ]
-        .iter_mut()
-        {
-            match (**timer, **timer_counter) {
-                (0, _) => **timer_counter = None,
-                (_, None) => **timer = 0,
-                (_, Some(count)) => {
-                        let new_counter = count + self.micro_seconds_per_instruction;
-                        if new_counter >= TIMER_INTERVAL_MICRO_SECONDS {
-                            **timer_counter = Some(new_counter - TIMER_INTERVAL_MICRO_SECONDS);
-                            **timer = timer.saturating_sub(1);
-                        } else {
-                            **timer_counter = Some(new_counter);
-                        }
-                    }
+    fn step_timer(&mut self, timer: Timer) {
+        let (register, timer) = match timer {
+            Timer::Delay => (&mut self.dt, &mut self.delay_timer),
+            Timer::Sound => (&mut self.st, &mut self.sound_timer),
+        };
+
+        match (*register, *timer) {
+            (0, _) => *timer = None,
+            (_, None) => *register = 0,
+            (_, Some(time)) => {
+                let new_time = time + self.micro_seconds_per_instruction;
+                if new_time >= TIMER_INTERVAL_MICRO_SECONDS {
+                    *timer = Some(new_time - TIMER_INTERVAL_MICRO_SECONDS);
+                    *register = register.saturating_sub(1);
+                } else {
+                    *timer = Some(new_time);
+                }
             }
         }
     }
@@ -277,7 +284,7 @@ impl Cpu {
             }
 
             Instruction::OpCodeCXNN(x, nn) => {
-                let mut rng = WyRand::new_seed(532);
+                let mut rng = WyRand::new_seed(self.timestamp);
                 self.v[x] = rng.generate::<u8>() & nn;
             }
 
@@ -321,12 +328,12 @@ impl Cpu {
 
             Instruction::OpCodeFX15(x) => {
                 self.dt = self.v[x];
-                self.delay_timer_counter = Some(0);
+                self.delay_timer = Some(0);
             }
 
             Instruction::OpCodeFX18(x) => {
                 self.st = self.v[x];
-                self.sound_timer_counter = Some(0);
+                self.sound_timer = Some(0);
             }
 
             Instruction::OpCodeFX1E(x) => {
