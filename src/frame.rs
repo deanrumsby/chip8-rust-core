@@ -14,9 +14,11 @@ pub struct FrameBuffer {
 
 impl FrameBuffer {
     pub fn new() -> Self {
-        FrameBuffer {
+        let mut frame = Self {
             buffer: [0; BUFFER_SIZE],
-        }
+        };
+        frame.clear();
+        frame
     }
 
     pub fn frame_buffer(&self) -> &[u8] {
@@ -24,7 +26,10 @@ impl FrameBuffer {
     }
 
     pub fn clear(&mut self) {
-        self.buffer = [0; BUFFER_SIZE];
+        self.buffer
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, pixel)| *pixel = PIXEL_OFF[index % BYTES_PER_PIXEL])
     }
 
     pub fn draw(&mut self, sprite: &[u8], coordinates: (usize, usize)) -> bool {
