@@ -10,8 +10,10 @@ use winit::{
 use std::{
     env, fs,
     path::Path,
-    time::{SystemTime, UNIX_EPOCH},
+    time::Instant,
 };
+
+use rand::{thread_rng, RngCore};
 
 fn main() -> Result<(), Error> {
     let event_loop = EventLoop::new();
@@ -29,11 +31,11 @@ fn main() -> Result<(), Error> {
         Pixels::new(FRAME_WIDTH as u32, FRAME_HEIGHT as u32, surface_texture)?
     };
 
-    let mut chip8 = Chip8::new();
+    let mut chip8 = Chip8::new(thread_rng().next_u64());
     let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
 
     chip8.load(rom.as_slice());
-    chip8.start(current_time());
+    let mut previous_instant = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
@@ -82,17 +84,13 @@ fn main() -> Result<(), Error> {
             }
 
             Event::MainEventsCleared => {
-                chip8.emulate(current_time());
+                let time_elapsed = previous_instant.elapsed().as_micros();
+                previous_instant = Instant::now();
+                chip8.update(time_elapsed as u64);
                 pixels.frame_mut().copy_from_slice(chip8.frame_buffer());
                 pixels.render().unwrap();
             }
             _ => (),
         }
     });
-}
-
-fn current_time() -> u64 {
-    let now = SystemTime::now();
-    let since_the_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    since_the_epoch.as_micros() as u64
 }
