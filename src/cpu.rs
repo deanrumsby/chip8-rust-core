@@ -1,11 +1,13 @@
 mod instructions;
+mod memory;
+mod font;
 
 use nanorand::{Rng, WyRand};
 
-use crate::font::{FONT, FONT_CHAR_SIZE};
 use crate::frame::FrameBuffer;
 use crate::keypad::{Key, KeyPad, KeyState};
-use crate::memory::Memory;
+use font::{FONT, FONT_CHAR_SIZE};
+use memory::Memory;
 use instructions::Instruction;
 
 const V_REG_COUNT: usize = 16;

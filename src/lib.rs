@@ -1,8 +1,6 @@
 mod cpu;
-mod font;
 mod frame;
 mod keypad;
-mod memory;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
