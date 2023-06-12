@@ -31,7 +31,8 @@ enum Timer {
 }
 
 pub struct Cpu {
-    timestamp: u64,
+    rng: WyRand,
+    cpu_timer: u64,
     instructions_per_second: u64,
     micro_seconds_per_instruction: u64,
     pc: u16,
@@ -44,14 +45,15 @@ pub struct Cpu {
     pub ram: Memory,
     pub frame: FrameBuffer,
     pub key_pad: KeyPad,
-    sound_timer: Option<u64>,
-    delay_timer: Option<u64>,
+    sound_timer: u64,
+    delay_timer: u64,
 }
 
 impl Cpu {
-    pub fn new() -> Self {
+    pub fn new(seed: u64) -> Self {
         let mut cpu = Self {
-            timestamp: 0,
+            rng: WyRand::new_seed(seed),
+            cpu_timer: 0,
             instructions_per_second: 0,
             micro_seconds_per_instruction: 0,
             pc: PROGRAM_START_OFFSET,
@@ -64,8 +66,8 @@ impl Cpu {
             ram: Memory::new(),
             frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
-            sound_timer: None,
-            delay_timer: None,
+            sound_timer: 0,
+            delay_timer: 0,
         };
 
         cpu.set_speed(DEFAULT_INSTRUCTIONS_PER_SECOND);
@@ -73,16 +75,13 @@ impl Cpu {
         cpu
     }
 
-    pub fn start(&mut self, timestamp: u64) {
-        self.timestamp = timestamp;
-    }
-
     pub fn load_program(&mut self, bytes: &[u8]) {
         self.ram.load(PROGRAM_START, bytes);
     }
 
-    pub fn reset(&mut self) {
-        self.timestamp = 0;
+    pub fn reset(&mut self, seed: u64) {
+        self.rng = WyRand::new_seed(seed);
+        self.cpu_timer = 0;
         self.pc = PROGRAM_START_OFFSET;
         self.i = 0;
         self.sp = 0;
@@ -92,8 +91,8 @@ impl Cpu {
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
         self.frame = FrameBuffer::new();
-        self.delay_timer = None;
-        self.sound_timer = None;
+        self.delay_timer = 0;
+        self.sound_timer = 0;
 
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
@@ -103,14 +102,14 @@ impl Cpu {
         self.micro_seconds_per_instruction = ONE_SECOND_IN_MICRO_SECONDS / instructions_per_second;
     }
 
-    pub fn emulate(&mut self, timestamp: u64) {
-        let instructions_to_emulate =
-            (timestamp - self.timestamp) / self.micro_seconds_per_instruction;
+    pub fn update(&mut self, time_delta: u64) {
+        let total_time = self.cpu_timer + time_delta;
+        let instructions_to_emulate = total_time / self.micro_seconds_per_instruction; 
         for _ in 0..instructions_to_emulate as u64 {
             self.step();
         }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
-        self.timestamp += time_progressed;
+        self.cpu_timer = total_time - time_progressed;
     }
 
     pub fn step(&mut self) {
@@ -138,18 +137,16 @@ impl Cpu {
             Timer::Sound => (&mut self.st, &mut self.sound_timer),
         };
 
-        match (*register, *timer) {
-            (0, _) => *timer = None,
-            (_, None) => *register = 0,
-            (_, Some(time)) => {
-                let new_time = time + self.micro_seconds_per_instruction;
-                if new_time >= TIMER_INTERVAL_MICRO_SECONDS {
-                    *timer = Some(new_time - TIMER_INTERVAL_MICRO_SECONDS);
-                    *register = register.saturating_sub(1);
-                } else {
-                    *timer = Some(new_time);
-                }
+        if *register > 0 {
+            let new_time = *timer + self.micro_seconds_per_instruction;
+            if new_time >= TIMER_INTERVAL_MICRO_SECONDS {
+                *timer = new_time - TIMER_INTERVAL_MICRO_SECONDS;
+                *register = register.saturating_sub(1);
+            } else {
+                *timer = new_time;
             }
+        } else {
+            *timer = 0;
         }
     }
 
@@ -284,8 +281,7 @@ impl Cpu {
             }
 
             Instruction::OpCodeCXNN(x, nn) => {
-                let mut rng = WyRand::new_seed(self.timestamp);
-                self.v[x] = rng.generate::<u8>() & nn;
+                self.v[x] = self.rng.generate::<u8>() & nn;
             }
 
             Instruction::OpCodeDXYN(x, y, n) => {
@@ -328,12 +324,10 @@ impl Cpu {
 
             Instruction::OpCodeFX15(x) => {
                 self.dt = self.v[x];
-                self.delay_timer = Some(0);
             }
 
             Instruction::OpCodeFX18(x) => {
                 self.st = self.v[x];
-                self.sound_timer = Some(0);
             }
 
             Instruction::OpCodeFX1E(x) => {
