@@ -1,3 +1,5 @@
+use std::slice;
+
 pub const FRAME_WIDTH: usize = 64;
 pub const FRAME_HEIGHT: usize = 32;
 
@@ -8,25 +10,53 @@ const BYTES_PER_PIXEL: usize = 4;
 const BYTES_PER_ROW: usize = FRAME_WIDTH * BYTES_PER_PIXEL;
 const BUFFER_SIZE: usize = FRAME_SIZE * BYTES_PER_PIXEL;
 
-pub struct FrameBuffer {
+pub enum FrameBuffer {
+    Internal(InternalFrameBuffer),
+    External(ExternalFrameBuffer),
+}
+
+pub struct InternalFrameBuffer {
     buffer: [u8; BUFFER_SIZE],
 }
 
+pub struct ExternalFrameBuffer {
+    ptr: *mut u8,
+    len: usize,
+}
+
 impl FrameBuffer {
-    pub fn new() -> Self {
-        let mut frame = Self {
-            buffer: [0; BUFFER_SIZE],
+    pub fn new(buffer: Option<&mut [u8]>) -> Self {
+        let mut fb = match buffer {
+            Some(buf) => Self::External(ExternalFrameBuffer::new(buf)),
+            None => Self::Internal(InternalFrameBuffer::new()),
         };
-        frame.clear();
-        frame
+        fb.clear();
+        fb
     }
 
-    pub fn frame_buffer(&self) -> &[u8] {
-        &self.buffer
+    fn as_mut_slice(&mut self) -> &mut [u8] {
+        match self {
+            FrameBuffer::Internal(fb) => &mut fb.buffer,
+            FrameBuffer::External(fb) => unsafe { slice::from_raw_parts_mut(fb.ptr, fb.len) },
+        }
+    }
+
+    pub fn mut_ptr(&mut self) -> *mut u8 {
+        match self {
+            FrameBuffer::Internal(fb) => fb.buffer.as_mut_ptr(),
+            FrameBuffer::External(fb) => fb.ptr,
+        }
+    }
+
+    pub fn len(&self) -> usize {
+        match self {
+            FrameBuffer::Internal(fb) => fb.buffer.len(),
+            FrameBuffer::External(fb) => fb.len,
+        }
     }
 
     pub fn clear(&mut self) {
-        self.buffer
+        self.as_mut_slice()
             .iter_mut()
             .enumerate()
             .for_each(|(index, pixel)| *pixel = PIXEL_OFF[index % BYTES_PER_PIXEL])
@@ -53,7 +83,7 @@ impl FrameBuffer {
                 if bit == 1 {
                     let pixel_offset = (x * BYTES_PER_PIXEL) + y * BYTES_PER_ROW;
                     let pixel = self
-                        .buffer
+                        .as_mut_slice()
                         .get_mut(pixel_offset..pixel_offset + BYTES_PER_PIXEL)
                         .expect("pixel out of bounds");
 
@@ -67,5 +97,22 @@ impl FrameBuffer {
             }
         }
         has_collided
+    }
+}
+
+impl InternalFrameBuffer {
+    pub fn new() -> Self {
+        Self {
+            buffer: [0; BUFFER_SIZE],
+        }
+    }
+}
+
+impl ExternalFrameBuffer {
+    pub fn new(buffer: &mut [u8]) -> Self {
+        Self { 
+            ptr: buffer.as_mut_ptr(),
+            len: buffer.len(),
+        }
     }
 }

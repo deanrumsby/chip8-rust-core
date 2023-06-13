@@ -5,9 +5,6 @@ mod keypad;
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
 
-#[cfg(feature = "wasm")]
-use js_sys::Uint8ClampedArray;
-
 use cpu::Cpu;
 pub use frame::{FRAME_HEIGHT, FRAME_WIDTH};
 pub use keypad::{Key, KeyState};
@@ -26,18 +23,20 @@ impl Chip8 {
         }
     }
 
+    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) {
+        self.cpu.set_frame_buffer(frame_buffer);
+    }
+
+    pub fn frame_buffer_mut_ptr(&mut self) -> *mut u8 {
+        self.cpu.frame.mut_ptr()
+    }
+
+    pub fn frame_buffer_len(&self) -> usize {
+        self.cpu.frame.len()
+    }
+
     pub fn set_speed(&mut self, instructions_per_second: u64) {
         self.cpu.set_speed(instructions_per_second);
-    }
-
-    #[cfg(not(feature = "wasm"))]
-    pub fn frame_buffer(&self) -> &[u8] {
-        self.cpu.frame.frame_buffer()
-    }
-
-    #[cfg(feature = "wasm")]
-    pub fn frame_buffer(&self) -> Uint8ClampedArray {
-        Uint8ClampedArray::from(self.cpu.frame.frame_buffer())
     }
 
     pub fn load(&mut self, bytes: &[u8]) {

@@ -66,7 +66,7 @@ impl Cpu {
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
             ram: Memory::new(),
-            frame: FrameBuffer::new(),
+            frame: FrameBuffer::new(None),
             key_pad: KeyPad::new(),
             sound_timer: 0,
             delay_timer: 0,
@@ -76,7 +76,9 @@ impl Cpu {
         cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
         cpu
     }
+}
 
+impl Cpu {
     pub fn load_program(&mut self, bytes: &[u8]) {
         self.ram.load(PROGRAM_START, bytes);
     }
@@ -92,11 +94,15 @@ impl Cpu {
         self.v = [0; V_REG_COUNT];
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
-        self.frame = FrameBuffer::new();
         self.delay_timer = 0;
         self.sound_timer = 0;
 
+        self.frame.clear();
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
+    }
+
+    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) { 
+        self.frame = FrameBuffer::new(Some(frame_buffer));
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u64) {
