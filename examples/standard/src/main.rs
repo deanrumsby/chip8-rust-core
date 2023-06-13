@@ -32,9 +32,11 @@ fn main() -> Result<(), Error> {
     };
 
     let mut chip8 = Chip8::new(thread_rng().next_u64());
-    let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
+    chip8.set_frame_buffer(pixels.frame_mut());
 
+    let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
     chip8.load(rom.as_slice());
+
     let mut previous_instant = Instant::now();
 
     event_loop.run(move |event, _, control_flow| {
@@ -87,7 +89,6 @@ fn main() -> Result<(), Error> {
                 let time_elapsed = previous_instant.elapsed().as_micros();
                 previous_instant = Instant::now();
                 chip8.update(time_elapsed as u64);
-                pixels.frame_mut().copy_from_slice(chip8.frame_buffer());
                 pixels.render().unwrap();
             }
             _ => (),

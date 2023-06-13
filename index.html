@@ -22,10 +22,10 @@
       import init, { Chip8, Key, KeyState } from './pkg/chip8_core.js';
 
       async function run() {
-        await init();
+        const wasm = await init();
 
-        // And afterwards we can use all the functionality defined in wasm.
         const chip8 = new Chip8(BigInt(Math.floor(Math.random() * 1000)));
+	const view = new Uint8ClampedArray(wasm.memory.buffer, chip8.frame_buffer_mut_ptr(), chip8.frame_buffer_len());
 	let previousTimeStamp;
 
 	const keys = {
@@ -69,13 +69,14 @@
 	    previousTimeStamp = timeStamp;
 	    chip8.update(elapsedMicroSeconds);
 	    ctx.clearRect(0, 0, canvas.width, canvas.height);
-	    const imageData = new ImageData(chip8.frame_buffer(), 64);
+	    const imageData = new ImageData(view, canvas.width, canvas.height);
 	    ctx.putImageData(imageData, 0, 0);
 	    window.requestAnimationFrame(animate);
 	};
 
 	const start = document.querySelector('#start');
 	start.addEventListener('click', () => window.requestAnimationFrame(animate));
+	
 	window.addEventListener('keydown', (e) => {
 	    const key = keys[e.key];
 	    const keyState = KeyState.Pressed;
