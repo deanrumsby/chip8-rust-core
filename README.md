@@ -1,3 +1,14 @@
-#chip8_core
+# chip8_core
 
-My implementation of the Chip8 interpreter, written as a library using Rust.
+Provides an API to a Chip8 interpreter implementation.
+
+## Environments
+
+- Desktop
+- Browser (via WASM)
+- Embedded
+
+## Usage
+
+There is an example application for each runtime environment in the `examples` folder. 
+
