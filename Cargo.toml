@@ -1,5 +1,7 @@
 [package]
 name = "chip8_core"
+description = "A CHIP-8 emulator core library"
+license = "MIT"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,8 +11,6 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 nanorand = { version = "0.7.0", default-features = false, features = ["wyrand"] }
 wasm-bindgen = { version = "0.2.84", optional = true }
-js-sys = { version = "0.3.61", optional = true }
 
 [features]
-std = []
-wasm = ["wasm-bindgen", "js-sys"]
+wasm = ["wasm-bindgen"]
