@@ -11,7 +11,7 @@ const BYTES_PER_ROW: usize = FRAME_WIDTH * BYTES_PER_PIXEL;
 const BUFFER_SIZE: usize = FRAME_SIZE * BYTES_PER_PIXEL;
 
 pub enum FrameBuffer {
-    Internal(InternalFrameBuffer),
+    Internal(Box<InternalFrameBuffer>),
     External(ExternalFrameBuffer),
 }
 
@@ -28,7 +28,7 @@ impl FrameBuffer {
     pub fn new(buffer: Option<&mut [u8]>) -> Self {
         let mut fb = match buffer {
             Some(buf) => Self::External(ExternalFrameBuffer::new(buf)),
-            None => Self::Internal(InternalFrameBuffer::new()),
+            None => Self::Internal(Box::new(InternalFrameBuffer::new())),
         };
         fb.clear();
         fb
@@ -87,7 +87,7 @@ impl FrameBuffer {
                         .get_mut(pixel_offset..pixel_offset + BYTES_PER_PIXEL)
                         .expect("pixel out of bounds");
 
-                    if pixel == &PIXEL_ON {
+                    if pixel == PIXEL_ON {
                         pixel.copy_from_slice(&PIXEL_OFF);
                         has_collided = true;
                     } else {
@@ -110,7 +110,7 @@ impl InternalFrameBuffer {
 
 impl ExternalFrameBuffer {
     pub fn new(buffer: &mut [u8]) -> Self {
-        Self { 
+        Self {
             ptr: buffer.as_mut_ptr(),
             len: buffer.len(),
         }

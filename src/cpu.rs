@@ -1,14 +1,14 @@
+mod font;
 mod instructions;
 mod memory;
-mod font;
 
 use nanorand::{Rng, WyRand};
 
 use crate::frame::FrameBuffer;
 use crate::keypad::{Key, KeyPad, KeyState};
 use font::{FONT, FONT_CHAR_SIZE};
-use memory::Memory;
 use instructions::Instruction;
+use memory::Memory;
 
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;
@@ -101,7 +101,7 @@ impl Cpu {
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
     }
 
-    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) { 
+    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) {
         self.frame = FrameBuffer::new(Some(frame_buffer));
     }
 
@@ -112,8 +112,8 @@ impl Cpu {
 
     pub fn update(&mut self, time_delta: u64) {
         let total_time = self.cpu_timer + time_delta;
-        let instructions_to_emulate = total_time / self.micro_seconds_per_instruction; 
-        for _ in 0..instructions_to_emulate as u64 {
+        let instructions_to_emulate = total_time / self.micro_seconds_per_instruction;
+        for _ in 0..instructions_to_emulate {
             self.step();
         }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
@@ -138,7 +138,7 @@ impl Cpu {
             ProgramCounterStatus::Jump(address) => self.pc = address,
         }
     }
-    
+
     fn step_timer(&mut self, timer: Timer) {
         let (register, timer) = match timer {
             Timer::Delay => (&mut self.dt, &mut self.delay_timer),
