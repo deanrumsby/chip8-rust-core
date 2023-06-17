@@ -1,6 +1,9 @@
 use std::slice;
 
+/// The width of the frame in pixels.
 pub const FRAME_WIDTH: usize = 64;
+
+/// The height of the frame in pixels.
 pub const FRAME_HEIGHT: usize = 32;
 
 const PIXEL_ON: [u8; 4] = [u8::MAX, u8::MAX, u8::MAX, u8::MAX];

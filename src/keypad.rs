@@ -7,6 +7,7 @@ pub struct KeyPad {
     state: [KeyState; KEY_COUNT],
 }
 
+/// Enum representing the state of a key on the keypad.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Copy, PartialEq)]
 pub enum KeyState {
@@ -15,6 +16,7 @@ pub enum KeyState {
     None,
 }
 
+/// Enum representing a key on the keypad.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 #[derive(Clone, Copy)]
 pub enum Key {

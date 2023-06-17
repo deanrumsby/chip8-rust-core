@@ -18,7 +18,7 @@ pub struct Chip8 {
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
 impl Chip8 {
     /// Creates a new Chip-8 virtual machine.
-    /// We use a seed to initialize the random number generator.
+    /// We use a seed to initialize the random number generator for portability across environments.
     #[cfg_attr(feature = "wasm", wasm_bindgen(constructor))]
     pub fn new(seed: u64) -> Self {
         Self {
@@ -29,18 +29,23 @@ impl Chip8 {
     /// Sets the frame buffer to use for rendering.
     /// The frame buffer must be a slice of length 64 * 32 * 4 (8192 bytes).
     /// Each pixel is represented by 4 bytes (RGBA).
+    /// This replaces the frame buffer that was previously set (or the default internal frame buffer).
     pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) {
         self.cpu.set_frame_buffer(frame_buffer);
     }
 
     /// Returns a pointer to the frame buffer. 
-    /// Useful when working in the WASM environment, to avoid copying the frame buffer.
+    /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
+    /// land.
+    /// See `examples/browser` and `examples/node` for examples.
     pub fn frame_buffer_mut_ptr(&mut self) -> *mut u8 {
         self.cpu.frame.mut_ptr()
     }
 
     /// Returns the length of the frame buffer.
-    /// Useful when working in the WASM environment, to avoid copying the frame buffer.
+    /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
+    /// land.
+    /// See `examples/browser` and `examples/node` for examples.
     pub fn frame_buffer_len(&self) -> usize {
         self.cpu.frame.len()
     }
@@ -55,7 +60,7 @@ impl Chip8 {
         self.cpu.load_program(bytes);
     }
     
-    /// Updates the virtual machine.
+    /// Updates the virtual machine's state.
     /// The time delta is in microseconds.
     /// The cpu will execute instructions until the time delta is reached, plus any remaining time from the previous update.
     pub fn update(&mut self, time_delta: u64) {
@@ -63,6 +68,7 @@ impl Chip8 {
     }
 
     /// Executes a single cycle of the virtual machine.
+    /// This will execute a single instruction and update the delay and sound timers.
     pub fn step(&mut self) {
         self.cpu.step();
     }
