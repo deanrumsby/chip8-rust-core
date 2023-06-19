@@ -15,9 +15,9 @@ const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
 const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
-const ONE_SECOND_IN_MICRO_SECONDS: u64 = 1_000_000;
-const DEFAULT_INSTRUCTIONS_PER_SECOND: u64 = 700;
-const TIMER_INTERVAL_MICRO_SECONDS: u64 = 16_666;
+const ONE_SECOND_IN_MICRO_SECONDS: u32 = 1_000_000;
+const DEFAULT_INSTRUCTIONS_PER_SECOND: u32 = 700;
+const TIMER_INTERVAL_MICRO_SECONDS: u32 = 16_666;
 const PROGRAM_START: usize = 0x200;
 
 enum ProgramCounterStatus {
@@ -34,9 +34,9 @@ enum Timer {
 
 pub struct Cpu {
     rng: WyRand,
-    cpu_timer: u64,
-    instructions_per_second: u64,
-    micro_seconds_per_instruction: u64,
+    cpu_timer: u32,
+    instructions_per_second: u32,
+    micro_seconds_per_instruction: u32,
     pc: u16,
     i: u16,
     sp: u8,
@@ -47,14 +47,14 @@ pub struct Cpu {
     pub ram: Memory,
     pub frame: FrameBuffer,
     pub key_pad: KeyPad,
-    sound_timer: u64,
-    delay_timer: u64,
+    sound_timer: u32,
+    delay_timer: u32,
 }
 
 impl Cpu {
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: u32) -> Self {
         let mut cpu = Self {
-            rng: WyRand::new_seed(seed),
+            rng: WyRand::new_seed(seed.into()),
             cpu_timer: 0,
             instructions_per_second: 0,
             micro_seconds_per_instruction: 0,
@@ -105,12 +105,12 @@ impl Cpu {
         self.frame = FrameBuffer::new(Some(frame_buffer));
     }
 
-    pub fn set_speed(&mut self, instructions_per_second: u64) {
+    pub fn set_speed(&mut self, instructions_per_second: u32) {
         self.instructions_per_second = instructions_per_second;
         self.micro_seconds_per_instruction = ONE_SECOND_IN_MICRO_SECONDS / instructions_per_second;
     }
 
-    pub fn update(&mut self, time_delta: u64) {
+    pub fn update(&mut self, time_delta: u32) {
         let total_time = self.cpu_timer + time_delta;
         let instructions_to_emulate = total_time / self.micro_seconds_per_instruction;
         for _ in 0..instructions_to_emulate {

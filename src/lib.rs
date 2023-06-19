@@ -20,7 +20,7 @@ impl Chip8 {
     /// Creates a new Chip-8 virtual machine.
     /// We use a seed to initialize the random number generator for portability across environments.
     #[cfg_attr(feature = "wasm", wasm_bindgen(constructor))]
-    pub fn new(seed: u64) -> Self {
+    pub fn new(seed: u32) -> Self {
         Self {
             cpu: Cpu::new(seed),
         }
@@ -51,7 +51,7 @@ impl Chip8 {
     }
 
     /// Sets the speed of the virtual machine.
-    pub fn set_speed(&mut self, instructions_per_second: u64) {
+    pub fn set_speed(&mut self, instructions_per_second: u32) {
         self.cpu.set_speed(instructions_per_second);
     }
 
@@ -63,7 +63,7 @@ impl Chip8 {
     /// Updates the virtual machine's state.
     /// The time delta is in microseconds.
     /// The cpu will execute instructions until the time delta is reached, plus any remaining time from the previous update.
-    pub fn update(&mut self, time_delta: u64) {
+    pub fn update(&mut self, time_delta: u32) {
         self.cpu.update(time_delta);
     }
 
