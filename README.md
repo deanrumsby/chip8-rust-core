@@ -1,6 +1,12 @@
 # chip8_core
 
-Provides an API to a Chip8 interpreter implementation.
+A Chip8 interpreter library. 
+
+## Motivation
+
+I have several project ideas that involve the Chip8 interpreter, since it is such a simple system to build for, so I wanted
+to create a library that I could use for several different targets. Thus, the aim for this library is to create a simple, accurate 
+and very portable library that I can build different UIs to attach to.
 
 ## Environments
 
@@ -8,7 +14,11 @@ Provides an API to a Chip8 interpreter implementation.
 - Browser (via WASM)
 - Embedded
 
+## Installation
+
+- via cargo: `cargo add chip8_core`
+- via npm (WASM module): `npm install @deanrumsby/chip8_core`
+
 ## Usage
 
-There is an example application for each runtime environment in the `examples` folder. 
-
+There is an example application for each runtime environment in the `examples` folder.
