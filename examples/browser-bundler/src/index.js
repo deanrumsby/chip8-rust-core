@@ -1,9 +1,19 @@
-import { Chip8, Key, KeyState } from '@deanrumsby/chip8_core';
-import { memory } from '@deanrumsby/chip8_core/chip8_core_bg.wasm';
+import { Chip8, Key, KeyState } from '../pkg/chip8_core';
+import { memory } from '../pkg/chip8_core_bg.wasm';
 
 async function run() {
-  const chip8 = new Chip8(BigInt(Math.floor(Math.random() * 1000)));
+  // this creates a random unsigned 32bit number
+  const createSeed = () => Math.floor(Math.random() * Math.pow(2, 32));
+
+  // this converts a DomHighResTimeStamp to an integer number of microseconds
+  const convertTimeStamp = (timestamp) => Math.floor(timestamp * 1000);
+
+  const chip8 = new Chip8(createSeed());
+
+  // we create a view into the wasm memory so we can access the internal frame buffer
   const view = new Uint8ClampedArray(memory.buffer, chip8.frame_buffer_mut_ptr(), chip8.frame_buffer_len());
+
+  // we need to keep track of the previous timestamp so we can calculate the elapsed time
   let previousTimeStamp;
 
   const keys = {
@@ -46,7 +56,6 @@ async function run() {
     const elapsedMicroSeconds = convertTimeStamp(elapsed);
     previousTimeStamp = timeStamp;
     chip8.update(elapsedMicroSeconds);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     const imageData = new ImageData(view, canvas.width, canvas.height);
     ctx.putImageData(imageData, 0, 0);
     window.requestAnimationFrame(animate);
@@ -65,8 +74,6 @@ async function run() {
     const keyState = KeyState.Released;
     chip8.handle_key_event(key, keyState);
   });
-
-  const convertTimeStamp = (timestamp) => BigInt(Math.floor(timestamp * 1000));
 }
 
 run();
