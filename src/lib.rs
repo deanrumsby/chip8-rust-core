@@ -37,7 +37,7 @@ impl Chip8 {
     /// Returns a pointer to the frame buffer. 
     /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
     /// land.
-    /// See `examples/browser` and `examples/node` for examples.
+    /// See `examples/browser` and `examples/browser-bundler` for examples.
     pub fn frame_buffer_mut_ptr(&mut self) -> *mut u8 {
         self.cpu.frame.mut_ptr()
     }
@@ -45,7 +45,7 @@ impl Chip8 {
     /// Returns the length of the frame buffer.
     /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
     /// land.
-    /// See `examples/browser` and `examples/node` for examples.
+    /// See `examples/browser` and `examples/browser-bundler` for examples.
     pub fn frame_buffer_len(&self) -> usize {
         self.cpu.frame.len()
     }
