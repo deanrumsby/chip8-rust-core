@@ -9,6 +9,7 @@ edition = "2021"
 readme = "README.md"
 keywords = ["chip8", "emulator", "core"]
 categories = ["emulators", "no-std", "wasm"]
+exclude = ["examples/*"]
 
 [lib]
 crate-type = ["rlib", "cdylib"]
