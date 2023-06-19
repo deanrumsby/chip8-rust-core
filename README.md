@@ -19,6 +19,7 @@ and very portable library that I can build different UIs to attach to.
 - via cargo: `cargo add chip8_core`
 - via npm (WASM module): `npm install @deanrumsby/chip8_core`
 
-## Usage
+## Examples
 
 There is an example application for each runtime environment in the `examples` folder.
+You will need to clone this repo and then look to the specific example's README for instructions on how to run it. 
