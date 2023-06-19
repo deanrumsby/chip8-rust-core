@@ -31,7 +31,7 @@ fn main() -> Result<(), Error> {
         Pixels::new(FRAME_WIDTH as u32, FRAME_HEIGHT as u32, surface_texture)?
     };
 
-    let mut chip8 = Chip8::new(thread_rng().next_u64());
+    let mut chip8 = Chip8::new(thread_rng().next_u32());
     chip8.set_frame_buffer(pixels.frame_mut());
 
     let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
@@ -88,7 +88,7 @@ fn main() -> Result<(), Error> {
             Event::MainEventsCleared => {
                 let time_elapsed = previous_instant.elapsed().as_micros();
                 previous_instant = Instant::now();
-                chip8.update(time_elapsed as u64);
+                chip8.update(time_elapsed as u32);
                 pixels.render().unwrap();
             }
             _ => (),
