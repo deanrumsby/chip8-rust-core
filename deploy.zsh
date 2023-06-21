@@ -9,7 +9,7 @@ npm publish &&
 
 # publish to crates.io
 cd ../ &&
-cargo publish &&
+cargo publish --features std &&
 
 git tag -a $1 -m "Release $1" &&
 git push --tags &&
