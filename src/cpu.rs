@@ -1,7 +1,4 @@
-mod font;
-mod instructions;
-mod memory;
-
+use alloc::borrow::ToOwned;
 use nanorand::{Rng, WyRand};
 
 use crate::frame::FrameBuffer;
@@ -9,6 +6,10 @@ use crate::keypad::{Key, KeyPad, KeyState};
 use font::{FONT, FONT_CHAR_SIZE};
 use instructions::Instruction;
 use memory::Memory;
+
+mod font;
+mod instructions;
+mod memory;
 
 const V_REG_COUNT: usize = 16;
 const STACK_SIZE: usize = 16;

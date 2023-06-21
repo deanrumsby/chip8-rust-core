@@ -1,6 +1,9 @@
-mod cpu;
-mod frame;
-mod keypad;
+#![no_std]
+
+extern crate alloc;
+
+#[cfg(feature = "std")]
+extern crate std;
 
 #[cfg(feature = "wasm")]
 use wasm_bindgen::prelude::*;
@@ -8,6 +11,10 @@ use wasm_bindgen::prelude::*;
 use cpu::Cpu;
 pub use frame::{FRAME_HEIGHT, FRAME_WIDTH};
 pub use keypad::{Key, KeyState};
+
+mod cpu;
+mod frame;
+mod keypad;
 
 /// Struct representing the Chip-8 virtual machine.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]

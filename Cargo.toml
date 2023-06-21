@@ -19,4 +19,5 @@ nanorand = { version = "0.7.0", default-features = false, features = ["wyrand"] 
 wasm-bindgen = { version = "0.2.84", optional = true }
 
 [features]
-wasm = ["wasm-bindgen"]
+std = []
+wasm = ["std", "dep:wasm-bindgen"]

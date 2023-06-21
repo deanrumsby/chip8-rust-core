@@ -1,4 +1,5 @@
-use std::slice;
+use core::slice;
+use alloc::boxed::Box;
 
 /// The width of the frame in pixels.
 pub const FRAME_WIDTH: usize = 64;
