@@ -4,9 +4,11 @@
 wasm-pack build --scope deanrumsby -- --features wasm &&
 
 # publish to npm
-npm publish pkg &&
+cd pkg &&
+npm publish &&
 
 # publish to crates.io
+cd ../ &&
 cargo publish &&
 
 git tag -a $1 -m "Release $1" &&
