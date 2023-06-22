@@ -57,6 +57,18 @@ impl Chip8 {
         self.cpu.frame.len()
     }
 
+    /// Returns the width of the frame in pixels.
+    /// Useful when accessing the code as a WASM module, as we can't access constants from JS.
+    pub fn frame_width(&self) -> u32 {
+        FRAME_WIDTH as u32
+    }
+
+    /// Returns the height of the frame in pixels.
+    /// Useful when accessing the code as a WASM module, as we can't access constants from JS.
+    pub fn frame_height(&self) -> u32 {
+        FRAME_HEIGHT as u32
+    }
+
     /// Sets the speed of the virtual machine.
     pub fn set_speed(&mut self, instructions_per_second: u32) {
         self.cpu.set_speed(instructions_per_second);
