@@ -98,7 +98,11 @@ impl Chip8 {
     }
 
     /// Resets the virtual machine.
-    pub fn reset(&mut self, seed: u64) {
-        self.cpu.reset(seed);
+    /// The seed for the random number generator is not reset.
+    /// All registers, the stack, timers, ram and the frame buffer are reset.
+    /// The font is reloaded... However any program that was in memory is cleared, and will need
+    /// to be loaded again.
+    pub fn reset(&mut self) {
+        self.cpu.reset();
     }
 }

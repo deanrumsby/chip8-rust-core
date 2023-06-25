@@ -84,8 +84,7 @@ impl Cpu {
         self.ram.load(PROGRAM_START, bytes);
     }
 
-    pub fn reset(&mut self, seed: u64) {
-        self.rng = WyRand::new_seed(seed);
+    pub fn reset(&mut self) {
         self.cpu_timer = 0;
         self.pc = PROGRAM_START_OFFSET;
         self.i = 0;
