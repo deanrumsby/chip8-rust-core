@@ -1,5 +1,4 @@
 import { Chip8, Key, KeyState } from "../pkg/chip8_core";
-import { memory } from "../pkg/chip8_core_bg.wasm";
 
 async function run() {
   // this creates a random unsigned 32bit number
@@ -9,13 +8,6 @@ async function run() {
   const convertTimeStamp = (timestamp) => Math.floor(timestamp * 1000);
 
   const chip8 = new Chip8(createSeed());
-
-  // we create a view into the wasm memory so we can access the internal frame buffer
-  const view = new Uint8ClampedArray(
-    memory.buffer,
-    chip8.frame_buffer_mut_ptr(),
-    chip8.frame_buffer_len()
-  );
 
   // we need to keep track of the previous timestamp so we can calculate the elapsed time
   let previousTimeStamp;
@@ -60,7 +52,7 @@ async function run() {
     const elapsedMicroSeconds = convertTimeStamp(elapsed);
     previousTimeStamp = timeStamp;
     chip8.update(elapsedMicroSeconds);
-    const imageData = new ImageData(view, canvas.width, canvas.height);
+    const imageData = new ImageData(chip8.frame(), canvas.width, canvas.height);
     ctx.putImageData(imageData, 0, 0);
     window.requestAnimationFrame(animate);
   };

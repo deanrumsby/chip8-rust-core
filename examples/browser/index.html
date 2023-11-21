@@ -1,25 +1,25 @@
 <html>
   <head>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   </head>
   <body>
     <canvas
-	id="canvas"
-	width=64 
-	height=32 
-	style="border: 1px solid black; width: 640px; height: 320px; image-rendering: pixelated;">
+      id="canvas"
+      width="64"
+      height="32"
+      style="
+        border: 1px solid black;
+        width: 640px;
+        height: 320px;
+        image-rendering: pixelated;
+      "
+    >
     </canvas>
-    <input
-	id="input"
-    	type="file" />
-    <button 
-	id="start"
-	type="button">
-	    Start
-    </button>
+    <input id="input" type="file" />
+    <button id="start" type="button">Start</button>
     <!-- Note the usage of `type=module` here as this is an ES6 module -->
     <script type="module">
-      import init, { Chip8, Key, KeyState } from './pkg/chip8_core.js';
+      import init, { Chip8, Key, KeyState } from "./pkg/chip8_core.js";
 
       // this creates a random unsigned 32bit number
       const createSeed = () => Math.floor(Math.random() * Math.pow(2, 32));
@@ -32,71 +32,74 @@
 
         const chip8 = new Chip8(createSeed());
 
-	// we need to create a view into the wasm memory so we can access the internal frame buffer
-	const view = new Uint8ClampedArray(wasm.memory.buffer, chip8.frame_buffer_mut_ptr(), chip8.frame_buffer_len());
+        // we need to keep track of the previous timestamp so we can calculate the elapsed time
+        let previousTimeStamp;
 
-	// we need to keep track of the previous timestamp so we can calculate the elapsed time
-	let previousTimeStamp;
+        const keys = {
+          1: Key.Key1,
+          2: Key.Key2,
+          3: Key.Key3,
+          4: Key.KeyC,
+          q: Key.Key4,
+          w: Key.Key5,
+          e: Key.Key6,
+          r: Key.KeyD,
+          a: Key.Key7,
+          s: Key.Key8,
+          d: Key.Key9,
+          f: Key.KeyE,
+          z: Key.KeyA,
+          x: Key.Key0,
+          c: Key.KeyB,
+          v: Key.KeyF,
+        };
 
-	const keys = {
-	    '1': Key.Key1,
-	    '2': Key.Key2,
-	    '3': Key.Key3,
-	    '4': Key.KeyC,
-	    'q': Key.Key4,
-	    'w': Key.Key5,
-	    'e': Key.Key6,
-	    'r': Key.KeyD,
-	    'a': Key.Key7,
-	    's': Key.Key8,
-	    'd': Key.Key9,
-	    'f': Key.KeyE,
-	    'z': Key.KeyA,
-	    'x': Key.Key0,
-	    'c': Key.KeyB,
-	    'v': Key.KeyF,
-	};
+        const input = document.querySelector("#input");
+        input.addEventListener("change", (e) => {
+          const fileReader = new FileReader();
+          fileReader.onload = () => {
+            const typedArray = new Uint8Array(fileReader.result);
+            chip8.load(typedArray);
+          };
+          fileReader.readAsArrayBuffer(input.files[0]);
+        });
 
-	const input = document.querySelector('#input');
-	input.addEventListener('change', (e) => {
-	    const fileReader = new FileReader();
-	    fileReader.onload = () => {
-	    	const typedArray = new Uint8Array(fileReader.result);
-		chip8.load(typedArray);
-	    };
-	    fileReader.readAsArrayBuffer(input.files[0]);
-	});
-	
-	const canvas = document.querySelector('#canvas');
-	const ctx = canvas.getContext('2d');
-		
-	const animate = (timeStamp) => {
-	    if (!previousTimeStamp) {
-		previousTimeStamp = timeStamp;
-	    }
-	    const elapsed = timeStamp - previousTimeStamp;
-	    // the chip8 expects the elapsed time in microseconds so we need to convert
-	    const elapsedMicroSeconds = convertTimeStamp(elapsed);
-	    previousTimeStamp = timeStamp;
-	    chip8.update(elapsedMicroSeconds);
-	    const imageData = new ImageData(view, canvas.width, canvas.height);
-	    ctx.putImageData(imageData, 0, 0);
-	    window.requestAnimationFrame(animate);
-	};
+        const canvas = document.querySelector("#canvas");
+        const ctx = canvas.getContext("2d");
 
-	const start = document.querySelector('#start');
-	start.addEventListener('click', () => window.requestAnimationFrame(animate));
-	
-	window.addEventListener('keydown', (e) => {
-	    const key = keys[e.key];
-	    const keyState = KeyState.Pressed;
-	    chip8.handle_key_event(key, keyState);
-	});
-	window.addEventListener('keyup', (e) => {
-	    const key = keys[e.key];
-	    const keyState = KeyState.Released;
-	    chip8.handle_key_event(key, keyState);
-	});
+        const animate = (timeStamp) => {
+          if (!previousTimeStamp) {
+            previousTimeStamp = timeStamp;
+          }
+          const elapsed = timeStamp - previousTimeStamp;
+          // the chip8 expects the elapsed time in microseconds so we need to convert
+          const elapsedMicroSeconds = convertTimeStamp(elapsed);
+          previousTimeStamp = timeStamp;
+          chip8.update(elapsedMicroSeconds);
+          const imageData = new ImageData(
+            chip8.frame(),
+            canvas.width,
+            canvas.height,
+          );
+          ctx.putImageData(imageData, 0, 0);
+          window.requestAnimationFrame(animate);
+        };
+
+        const start = document.querySelector("#start");
+        start.addEventListener("click", () =>
+          window.requestAnimationFrame(animate),
+        );
+
+        window.addEventListener("keydown", (e) => {
+          const key = keys[e.key];
+          const keyState = KeyState.Pressed;
+          chip8.handle_key_event(key, keyState);
+        });
+        window.addEventListener("keyup", (e) => {
+          const key = keys[e.key];
+          const keyState = KeyState.Released;
+          chip8.handle_key_event(key, keyState);
+        });
       }
       run();
     </script>

@@ -1,10 +1,10 @@
 {
-  "name": "browser-bundler",
+  "name": "webpack",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "wasm-pack build ../.. --out-dir examples/browser-bundler/pkg -- --features wasm && webpack serve --open"
+    "start": "wasm-pack build ../.. --out-dir examples/webpack/pkg -- --features wasm && webpack serve --open"
   },
   "keywords": [],
   "author": "",

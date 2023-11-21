@@ -10,7 +10,7 @@ We will need the following software:
 - `wasm-pack` to build the WASM module
 - `python3` to spin up a quick web-server locally
 
-With these installed, we can execute `./start.zsh` to run the example.
+With these installed, we can execute `./start.sh` to run the example.
 
 ## Programs
 
@@ -21,15 +21,18 @@ You will need some Chip8 programs to make use of the example. Visit <https://git
 The common mapping is used:
 
 **QWERTY Keyboard**
+
 ```
-| 1 | 2 | 3 | 4 |  
-| Q | W | E | R | 
-| A | S | D | F |  
-| Z | X | C | V | 
+| 1 | 2 | 3 | 4 |
+| Q | W | E | R |
+| A | S | D | F |
+| Z | X | C | V |
 ```
-maps to 
+
+maps to
 
 **Chip8 Keypad**
+
 ```
 | 1 | 2 | 3 | C |
 | 4 | 5 | 6 | D |

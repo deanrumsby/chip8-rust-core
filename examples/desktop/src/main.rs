@@ -32,7 +32,6 @@ fn main() -> Result<(), Error> {
     };
 
     let mut chip8 = Chip8::new(thread_rng().next_u32());
-    chip8.set_frame_buffer(pixels.frame_mut());
 
     let rom = fs::read(Path::new(&env::args().nth(1).unwrap())).unwrap();
     chip8.load(rom.as_slice());
@@ -89,6 +88,8 @@ fn main() -> Result<(), Error> {
                 let time_elapsed = previous_instant.elapsed().as_micros();
                 previous_instant = Instant::now();
                 chip8.update(time_elapsed as u32);
+                
+                pixels.frame_mut().copy_from_slice(chip8.frame());
                 pixels.render().unwrap();
             }
             _ => (),
