@@ -36,11 +36,13 @@ impl Chip8 {
         }
     }
 
+    /// Returns a reference to the frame buffer.
     #[cfg(not(feature = "wasm"))]
     pub fn frame(&self) -> &[u8] {
         self.cpu.frame.buffer.as_slice()
     }
 
+    /// Returns a Uint8ClampedArray copy of the frame buffer.
     #[cfg(feature = "wasm")]
     pub fn frame(&self) -> Uint8ClampedArray {
         Uint8ClampedArray::from(self.cpu.frame.buffer.as_slice())
