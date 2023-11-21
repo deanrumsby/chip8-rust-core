@@ -6,7 +6,10 @@ extern crate alloc;
 extern crate std;
 
 #[cfg(feature = "wasm")]
-use wasm_bindgen::prelude::*;
+use {
+    wasm_bindgen::prelude::*,
+    js_sys::Uint8ClampedArray,
+};
 
 use cpu::Cpu;
 pub use frame::{FRAME_HEIGHT, FRAME_WIDTH};
@@ -33,28 +36,14 @@ impl Chip8 {
         }
     }
 
-    /// Sets the frame buffer to use for rendering.
-    /// The frame buffer must be a slice of length 64 * 32 * 4 (8192 bytes).
-    /// Each pixel is represented by 4 bytes (RGBA).
-    /// This replaces the frame buffer that was previously set (or the default internal frame buffer).
-    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) {
-        self.cpu.set_frame_buffer(frame_buffer);
+    #[cfg(not(feature = "wasm"))]
+    pub fn frame(&self) -> &[u8] {
+        self.cpu.frame.buffer.as_slice()
     }
 
-    /// Returns a pointer to the frame buffer. 
-    /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
-    /// land.
-    /// See `examples/browser` and `examples/browser-bundler` for examples.
-    pub fn frame_buffer_mut_ptr(&mut self) -> *mut u8 {
-        self.cpu.frame.mut_ptr()
-    }
-
-    /// Returns the length of the frame buffer.
-    /// Useful when accessing the code as a WASM module, to avoid copying the frame buffer to JS
-    /// land.
-    /// See `examples/browser` and `examples/browser-bundler` for examples.
-    pub fn frame_buffer_len(&self) -> usize {
-        self.cpu.frame.len()
+    #[cfg(feature = "wasm")]
+    pub fn frame(&self) -> Uint8ClampedArray {
+        Uint8ClampedArray::from(self.cpu.frame.buffer.as_slice())
     }
 
     /// Returns the width of the frame in pixels.
@@ -78,7 +67,7 @@ impl Chip8 {
     pub fn load(&mut self, bytes: &[u8]) {
         self.cpu.load_program(bytes);
     }
-    
+
     /// Updates the virtual machine's state.
     /// The time delta is in microseconds.
     /// The cpu will execute instructions until the time delta is reached, plus any remaining time from the previous update.

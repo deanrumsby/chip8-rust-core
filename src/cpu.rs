@@ -67,7 +67,7 @@ impl Cpu {
             v: [0; V_REG_COUNT],
             stack: [0; STACK_SIZE],
             ram: Memory::new(),
-            frame: FrameBuffer::new(None),
+            frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
             sound_timer: 0,
             delay_timer: 0,
@@ -99,10 +99,6 @@ impl Cpu {
 
         self.frame.clear();
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
-    }
-
-    pub fn set_frame_buffer(&mut self, frame_buffer: &mut [u8]) {
-        self.frame = FrameBuffer::new(Some(frame_buffer));
     }
 
     pub fn set_speed(&mut self, instructions_per_second: u32) {

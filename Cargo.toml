@@ -17,7 +17,8 @@ crate-type = ["rlib", "cdylib"]
 [dependencies]
 nanorand = { version = "0.7.0", default-features = false, features = ["wyrand"] }
 wasm-bindgen = { version = "0.2.84", optional = true }
+js-sys = { version = "0.3.65", optional = true }
 
 [features]
 std = []
-wasm = ["std", "dep:wasm-bindgen"]
+wasm = ["std", "dep:wasm-bindgen", "dep:js-sys"]
