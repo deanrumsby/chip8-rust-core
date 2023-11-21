@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/sh
 
 # build npm package
 wasm-pack build --scope deanrumsby -- --features wasm &&
