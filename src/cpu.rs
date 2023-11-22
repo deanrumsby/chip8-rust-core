@@ -18,7 +18,7 @@ const FONT_START_OFFSET: usize = 0;
 const PROGRAM_START_OFFSET: u16 = 0x200;
 const ONE_SECOND_IN_MICRO_SECONDS: u32 = 1_000_000;
 const DEFAULT_INSTRUCTIONS_PER_SECOND: u32 = 700;
-const TIMER_INTERVAL_MICRO_SECONDS: u32 = 16_666;
+const TIMER_STEP_THRESHOLD_MICRO_SECONDS: u32 = 16_666;
 const PROGRAM_START: usize = 0x200;
 
 enum ProgramCounterStatus {
@@ -35,7 +35,7 @@ enum Timer {
 
 pub struct Cpu {
     rng: WyRand,
-    cpu_timer: u32,
+    cpu_time_accumulator: u32,
     instructions_per_second: u32,
     micro_seconds_per_instruction: u32,
     pc: u16,
@@ -48,15 +48,15 @@ pub struct Cpu {
     pub ram: Memory,
     pub frame: FrameBuffer,
     pub key_pad: KeyPad,
-    sound_timer: u32,
-    delay_timer: u32,
+    st_time_accumulator: u32,
+    dt_time_accumulator: u32,
 }
 
 impl Cpu {
     pub fn new(seed: u32) -> Self {
         let mut cpu = Self {
             rng: WyRand::new_seed(seed.into()),
-            cpu_timer: 0,
+            cpu_time_accumulator: 0,
             instructions_per_second: 0,
             micro_seconds_per_instruction: 0,
             pc: PROGRAM_START_OFFSET,
@@ -69,23 +69,21 @@ impl Cpu {
             ram: Memory::new(),
             frame: FrameBuffer::new(),
             key_pad: KeyPad::new(),
-            sound_timer: 0,
-            delay_timer: 0,
+            st_time_accumulator: 0,
+            dt_time_accumulator: 0,
         };
 
         cpu.set_speed(DEFAULT_INSTRUCTIONS_PER_SECOND);
         cpu.ram.load(FONT_START_OFFSET, FONT.as_slice());
         cpu
     }
-}
 
-impl Cpu {
     pub fn load_program(&mut self, bytes: &[u8]) {
         self.ram.load(PROGRAM_START, bytes);
     }
 
     pub fn reset(&mut self) {
-        self.cpu_timer = 0;
+        self.cpu_time_accumulator = 0;
         self.pc = PROGRAM_START_OFFSET;
         self.i = 0;
         self.sp = 0;
@@ -94,8 +92,8 @@ impl Cpu {
         self.v = [0; V_REG_COUNT];
         self.stack = [0; STACK_SIZE];
         self.ram = Memory::new();
-        self.delay_timer = 0;
-        self.sound_timer = 0;
+        self.dt_time_accumulator = 0;
+        self.st_time_accumulator = 0;
 
         self.frame.clear();
         self.ram.load(FONT_START_OFFSET, FONT.as_slice());
@@ -107,15 +105,15 @@ impl Cpu {
     }
 
     pub fn update(&mut self, time_delta: u32) {
-        let total_time = self.cpu_timer + time_delta;
-        let instructions_to_emulate = total_time / self.micro_seconds_per_instruction;
+        let total_time_accumulated = self.cpu_time_accumulator + time_delta;
+        let instructions_to_emulate = total_time_accumulated / self.micro_seconds_per_instruction;
         for _ in 0..instructions_to_emulate {
             self.step();
         }
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
-        self.cpu_timer = total_time - time_progressed;
+        self.cpu_time_accumulator = total_time_accumulated - time_progressed;
     }
-
+    
     pub fn step(&mut self) {
         self.step_instruction();
         self.step_timer(Timer::Delay);
@@ -136,21 +134,21 @@ impl Cpu {
     }
 
     fn step_timer(&mut self, timer: Timer) {
-        let (register, timer) = match timer {
-            Timer::Delay => (&mut self.dt, &mut self.delay_timer),
-            Timer::Sound => (&mut self.st, &mut self.sound_timer),
+        let (register, accumulator) = match timer {
+            Timer::Delay => (&mut self.dt, &mut self.dt_time_accumulator),
+            Timer::Sound => (&mut self.st, &mut self.st_time_accumulator),
         };
 
         if *register > 0 {
-            let new_time = *timer + self.micro_seconds_per_instruction;
-            if new_time >= TIMER_INTERVAL_MICRO_SECONDS {
-                *timer = new_time - TIMER_INTERVAL_MICRO_SECONDS;
+            let accumulated_time = *accumulator + self.micro_seconds_per_instruction;
+            if accumulated_time >= TIMER_STEP_THRESHOLD_MICRO_SECONDS {
+                *accumulator = accumulated_time - TIMER_STEP_THRESHOLD_MICRO_SECONDS;
                 *register = register.saturating_sub(1);
             } else {
-                *timer = new_time;
+                *accumulator = accumulated_time;
             }
         } else {
-            *timer = 0;
+            *accumulator = 0;
         }
     }
 
