@@ -6,18 +6,19 @@ extern crate alloc;
 extern crate std;
 
 #[cfg(feature = "wasm")]
-use {
-    wasm_bindgen::prelude::*,
-    js_sys::Uint8ClampedArray,
-};
+use wasm_bindgen::prelude::*;
 
-use cpu::Cpu;
-pub use frame::{FRAME_HEIGHT, FRAME_WIDTH};
+pub use cpu::registers::Registers;
+pub use frame::{FrameBuffer, FRAME_HEIGHT, FRAME_WIDTH};
 pub use keypad::{Key, KeyState};
+use cpu::Cpu;
 
 mod cpu;
 mod frame;
 mod keypad;
+
+#[cfg(feature = "wasm")]
+mod wasm;
 
 /// Struct representing the Chip-8 virtual machine.
 #[cfg_attr(feature = "wasm", wasm_bindgen)]
@@ -34,18 +35,6 @@ impl Chip8 {
         Self {
             cpu: Cpu::new(seed),
         }
-    }
-
-    /// Returns a reference to the frame buffer.
-    #[cfg(not(feature = "wasm"))]
-    pub fn frame(&self) -> &[u8] {
-        self.cpu.frame.buffer.as_slice()
-    }
-
-    /// Returns a Uint8ClampedArray copy of the frame buffer.
-    #[cfg(feature = "wasm")]
-    pub fn frame(&self) -> Uint8ClampedArray {
-        Uint8ClampedArray::from(self.cpu.frame.buffer.as_slice())
     }
 
     /// Returns the width of the frame in pixels.
@@ -81,6 +70,21 @@ impl Chip8 {
     /// This will execute a single instruction and update the delay and sound timers.
     pub fn step(&mut self) {
         self.cpu.step();
+    }
+
+    /// Returns a copy of the frame buffer.
+    pub fn frame(&self) -> FrameBuffer {
+        self.cpu.frame.clone()
+    }
+
+    /// Returns a copy of the registers.
+    pub fn registers(&self) -> Registers {
+        self.cpu.registers.clone()
+    }
+
+    /// Sets the registers.
+    pub fn set_registers(&mut self, registers: Registers) {
+        self.cpu.registers = registers;
     }
 
     /// Passes a key event to the virtual machine.

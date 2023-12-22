@@ -11,6 +11,7 @@ const BYTES_PER_PIXEL: usize = 4;
 const BYTES_PER_ROW: usize = FRAME_WIDTH * BYTES_PER_PIXEL;
 const BUFFER_SIZE: usize = FRAME_SIZE * BYTES_PER_PIXEL;
 
+#[derive(Clone)]
 pub struct FrameBuffer {
     pub buffer: [u8; BUFFER_SIZE],
 }
