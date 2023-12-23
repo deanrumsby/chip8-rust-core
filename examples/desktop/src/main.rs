@@ -7,11 +7,7 @@ use winit::{
     window::WindowBuilder,
 };
 
-use std::{
-    env, fs,
-    path::Path,
-    time::Instant,
-};
+use std::{env, fs, path::Path, time::Instant};
 
 use rand::{thread_rng, RngCore};
 
@@ -19,7 +15,10 @@ fn main() -> Result<(), Error> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Chip8")
-        .with_inner_size(winit::dpi::LogicalSize::new(FRAME_WIDTH as u32 * 10, FRAME_HEIGHT as u32 * 10))
+        .with_inner_size(winit::dpi::LogicalSize::new(
+            FRAME_WIDTH as u32 * 10,
+            FRAME_HEIGHT as u32 * 10,
+        ))
         .with_resizable(false)
         .build(&event_loop)
         .unwrap();
@@ -88,8 +87,8 @@ fn main() -> Result<(), Error> {
                 let time_elapsed = previous_instant.elapsed().as_micros();
                 previous_instant = Instant::now();
                 chip8.update(time_elapsed as u32);
-                
-                pixels.frame_mut().copy_from_slice(chip8.frame());
+
+                pixels.frame_mut().copy_from_slice(&chip8.frame().buffer);
                 pixels.render().unwrap();
             }
             _ => (),

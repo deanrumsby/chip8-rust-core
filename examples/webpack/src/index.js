@@ -61,6 +61,20 @@ async function run() {
   start.addEventListener("click", () => window.requestAnimationFrame(animate));
 
   window.addEventListener("keydown", (e) => {
+    if (e.key === "h") {
+      console.log(chip8.registers());
+    }
+    if (e.key === "j") {
+      chip8.set_registers({
+        i: 0,
+        pc: 0x200,
+        sp: 0,
+        dt: 0,
+        st: 0,
+        v: Array(16).fill(0),
+      });
+      console.log(chip8.registers());
+    }
     const key = keys[e.key];
     const keyState = KeyState.Pressed;
     chip8.handle_key_event(key, keyState);
