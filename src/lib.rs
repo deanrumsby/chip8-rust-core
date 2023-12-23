@@ -38,18 +38,21 @@ impl Chip8 {
     }
 
     /// Returns the width of the frame in pixels.
-    /// Useful when accessing the code as a WASM module, as we can't access constants from JS.
     pub fn frame_width(&self) -> u32 {
         FRAME_WIDTH as u32
     }
 
     /// Returns the height of the frame in pixels.
-    /// Useful when accessing the code as a WASM module, as we can't access constants from JS.
     pub fn frame_height(&self) -> u32 {
         FRAME_HEIGHT as u32
     }
 
-    /// Sets the speed of the virtual machine.
+    /// Returns the speed of the virtual machine in instructions per second.
+    pub fn speed(&self) -> u32 {
+        self.cpu.instructions_per_second
+    }
+
+    /// Sets the speed of the virtual machine in instructions per second.
     pub fn set_speed(&mut self, instructions_per_second: u32) {
         self.cpu.set_speed(instructions_per_second);
     }
@@ -59,15 +62,14 @@ impl Chip8 {
         self.cpu.load_program(bytes);
     }
 
-    /// Updates the virtual machine's state.
-    /// The time delta is in microseconds.
-    /// The cpu will execute instructions until the time delta is reached, plus any remaining time from the previous update.
+    /// This will progress the virtual machine by the given time delta.
+    /// It takes into account any accumulated time from previous calls that were less than a full cycle.
+    /// The time delta given is in microseconds.
     pub fn update(&mut self, time_delta: u32) {
         self.cpu.update(time_delta);
     }
 
     /// Executes a single cycle of the virtual machine.
-    /// This will execute a single instruction and update the delay and sound timers.
     pub fn step(&mut self) {
         self.cpu.step();
     }
