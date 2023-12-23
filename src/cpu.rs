@@ -8,10 +8,10 @@ use instructions::Instruction;
 use memory::Memory;
 use registers::Registers;
 
-pub mod registers;
 mod font;
 mod instructions;
 mod memory;
+pub mod registers;
 
 const STACK_SIZE: usize = 16;
 const OPCODE_SIZE: u16 = 2;
@@ -36,9 +36,9 @@ enum Timer {
 pub struct Cpu {
     rng: WyRand,
     cpu_time_accumulator: u32,
-    instructions_per_second: u32,
+    pub instructions_per_second: u32,
     micro_seconds_per_instruction: u32,
-    pub registers: Registers, 
+    pub registers: Registers,
     stack: [u16; STACK_SIZE],
     pub ram: Memory,
     pub frame: FrameBuffer,
@@ -97,7 +97,7 @@ impl Cpu {
         let time_progressed = instructions_to_emulate * self.micro_seconds_per_instruction;
         self.cpu_time_accumulator = total_time_accumulated - time_progressed;
     }
-    
+
     pub fn step(&mut self) {
         self.step_instruction();
         self.step_timer(Timer::Delay);
@@ -211,7 +211,8 @@ impl Cpu {
             }
 
             Instruction::OpCode8XY4(x, y) => {
-                let (result, has_overflown) = self.registers.v[x].overflowing_add(self.registers.v[y]);
+                let (result, has_overflown) =
+                    self.registers.v[x].overflowing_add(self.registers.v[y]);
                 self.registers.v[x] = result;
                 if has_overflown {
                     self.registers.v[0xf] = 1;
@@ -221,7 +222,8 @@ impl Cpu {
             }
 
             Instruction::OpCode8XY5(x, y) => {
-                let (result, has_underflown) = self.registers.v[x].overflowing_sub(self.registers.v[y]);
+                let (result, has_underflown) =
+                    self.registers.v[x].overflowing_sub(self.registers.v[y]);
                 self.registers.v[x] = result;
                 if !has_underflown {
                     self.registers.v[0xf] = 1;
@@ -237,7 +239,8 @@ impl Cpu {
             }
 
             Instruction::OpCode8XY7(x, y) => {
-                let (result, has_underflown) = self.registers.v[y].overflowing_sub(self.registers.v[x]);
+                let (result, has_underflown) =
+                    self.registers.v[y].overflowing_sub(self.registers.v[x]);
                 self.registers.v[x] = result;
                 if !has_underflown {
                     self.registers.v[0xf] = 1;
@@ -263,7 +266,8 @@ impl Cpu {
             }
 
             Instruction::OpCodeBNNN(nnn) => {
-                program_counter_status = ProgramCounterStatus::Jump(nnn + self.registers.v[0] as u16);
+                program_counter_status =
+                    ProgramCounterStatus::Jump(nnn + self.registers.v[0] as u16);
             }
 
             Instruction::OpCodeCXNN(x, nn) => {
@@ -330,7 +334,8 @@ impl Cpu {
                 let units = vx % 10;
                 let tens = (vx / 10) % 10;
                 let hundreds = (vx / 100) % 10;
-                self.ram.load(self.registers.i as usize, &[hundreds, tens, units]);
+                self.ram
+                    .load(self.registers.i as usize, &[hundreds, tens, units]);
             }
 
             Instruction::OpCodeFX55(x) => {
